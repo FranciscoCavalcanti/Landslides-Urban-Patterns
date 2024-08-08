@@ -1,0 +1,69 @@
+<html><head><style>body {
+   color: black;
+}
+</style></head><body><h1 id="do-landslides-impact-urbanization-patterns-evidence-from-brazilian-cities-replication-package">Do Landslides Impact Urbanization Patterns? Evidence from Brazilian Cities - Replication Package</h1>
+<p><strong>Authors:</strong> Pedro Jorge Alves, Francisco Cavalcanti, and Ricardo C. A. Lima</p>
+<h2 id="overview">Overview</h2>
+<p>You can download the replication package <strong><a href="https://www.dropbox.com/scl/fo/5urmqltc3bvohn5qtwkbl/AKb4FIZIJ8iTR9KZlEx94t8?rlkey=1w1f79ksry5852665lvserdv0&amp;st=3krxjljh&amp;dl=0">here</a></strong> (about 13 MB).</p>
+<p>The folder is subdivided into the following directories: 1) <a href="./build">build</a>, 2) <a href="./analysis">analysis</a>. Their purposes are described below:</p>
+<ol>
+<li><strong><a href="./build">build</a></strong>: This folder contains raw data and the code to extract and clean the data. The output of this folder should be a &quot;clean&quot; database used for the analysis.</li>
+<li><strong><a href="./analysis">analysis</a></strong>: This folder contains the implementation of the analyses and their results, such as tables and graphs.</li>
+</ol>
+<p>The analysis folder is further subdivided into: a) <strong>code</strong>, b) <strong>output</strong>, described as follows:</p>
+<ul>
+<li><strong>code</strong>: This folder is for storing the code used for the respective task.</li>
+<li><strong>output</strong>: This folder is for storing the results according to the “input” and the “code”.</li>
+</ul>
+<p>In the <code>build/output</code> folder, there are three important databases for replicating the work:</p>
+<ul>
+<li><code>database_panel.rds</code>: This file contains the annual panel data of Brazilian municipalities.</li>
+<li><code>restricted_PSM_database.rds</code>: This file contains the selection of municipalities through the propensity score method.</li>
+<li><code>database_two_periods.rds</code>: This file contains the decadal panel data of Brazilian municipalities.</li>
+</ul>
+<h2 id="analysis">Analysis</h2>
+<p>To replicate the results, please follow these steps:</p>
+<ol>
+<li>Download and extract the replication package to a folder of your choice: <a href="https://www.dropbox.com/scl/fo/5urmqltc3bvohn5qtwkbl/AKb4FIZIJ8iTR9KZlEx94t8?rlkey=1w1f79ksry5852665lvserdv0&amp;st=3krxjljh&amp;dl=0">Replication Package</a></li>
+<li>Open the code file (<code>Main_analysis.R</code>) located in the folder (<code>.\analysis\code</code>) using RStudio.</li>
+<li>Set the working directory to the folder where the replication package has been extracted.</li>
+<li>Change the path to the main analysis folder specified at lines 8 and 9 in the code file to the directory where the replication package is located.</li>
+<li>Run the <code>Main_analysis.R</code> to generate the results. The output files (both in PNG and TeX format) will be saved automatically in the folder (<code>.\analysis\output</code>).</li>
+</ol>
+<h2 id="code-and-corresponding-results">Code and Corresponding Results</h2>
+<p>Here is a detailed explanation of the codes within <code>Main_analysis.R</code> and the results they generate:</p>
+<h3 id="figure-1-descriptive-analysis-of-landslides">Figure 1: Descriptive Analysis of Landslides</h3>
+<ul>
+<li><code>.\analysis\code\_graph_affected_disaster_municipalities.R</code> - Spatial Distribution of Landslides</li>
+<li><code>.\analysis\code\_graph_affected_disaster_south_southeast_municipalities.R</code> - Landslides in the Southeast</li>
+<li><code>.\analysis\code\_graph_disasters_occourence_by_year_region.R</code> - Annual Occurrence of Landslides</li>
+</ul>
+<h3 id="figure-2-the-urban-layout-of-selected-brazilian-cities">Figure 2: The Urban Layout of Selected Brazilian Cities</h3>
+<ul>
+<li><code>.\analysis\code\_graph_urban_spraw_examples.R</code></li>
+</ul>
+<h3 id="table-1-summary-statistics">Table 1: Summary Statistics</h3>
+<ul>
+<li><code>.\analysis\code\_table_summary_statistics.do</code></li>
+</ul>
+<h3 id="figure-3-landslides-effects-on-urbanization-patterns">Figure 3: Landslides Effects on Urbanization Patterns</h3>
+<ul>
+<li><code>.\analysis\code\_graph_main_urban_size.R</code></li>
+</ul>
+<h3 id="figure-4-landslides-effects-on-gdp-per-capita-population-and-housing-demand">Figure 4: Landslides Effects on GDP per Capita, Population, and Housing Demand</h3>
+<ul>
+<li><code>.\analysis\code\_graph_staggered_DID_Mechanisms_1.R</code></li>
+</ul>
+<h3 id="figure-5-landslides-effects-on-adoption-of-land-use-regulations">Figure 5: Landslides Effects on Adoption of Land-Use Regulations</h3>
+<ul>
+<li><code>.\analysis\code\_graph_staggered_DID_Mechanisms_2.R</code></li>
+</ul>
+<h3 id="table-2-landslides-effects-on-housing-composition">Table 2: Landslides Effects on Housing Composition</h3>
+<ul>
+<li><code>.\analysis\code\_table_DID_2x2_additional_analysis.R</code></li>
+</ul>
+<h3 id="appendix-e-1-the-effect-on-wages-employment-and-establishments">Appendix E.1: The Effect on Wages, Employment, and Establishments</h3>
+<ul>
+<li><code>.\analysis\code\_graph_staggered_DID_Mechanisms_3.R</code></li>
+</ul>
+</body></html>
