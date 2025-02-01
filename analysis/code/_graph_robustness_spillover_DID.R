@@ -24,6 +24,8 @@ psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 # Merge the main dataset with the PSM dataset using the "code" column
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
+#### Robustness 1 - Sample removing Neighbour Municipalities affected by Landslides ####
+
 # Function to create plots for robustness checks
 ggplot_paper <- function(x){
   
@@ -35,7 +37,7 @@ ggplot_paper <- function(x){
            idname = "code",
            bstrap = TRUE,
            tname = "year",
-           data = dados2_removing), type = "dynamic")
+           data = dados2_robustness), type = "dynamic")
   
   ## Avg effect
   # Tidy up the results and select relevant columns
@@ -58,9 +60,9 @@ ggplot_paper <- function(x){
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
   
   ATT_significance_p <- ifelse(all(IC_99 < 0) | all(IC_99 > 0), paste0(round(mw.dyn_p$overall.att, 4), "***"),
-                        ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
-                        ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
-                        paste(round(mw.dyn_p$overall.att, 4)))))
+                               ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
+                                      ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
+                                             paste(round(mw.dyn_p$overall.att, 4)))))
   
   # Create the table as a grob (graphical object)
   dados_tabela <- data.table::data.table(
@@ -114,43 +116,77 @@ ggplot_paper <- function(x){
           panel.grid.minor.x = element_blank(),
           legend.position = c(0.15, lengend_pos_y))
   
-  # Combine the plot and the table
-  graph <- graph + annotation_custom(grob = tabela_grob,
-                                     xmin = table_pos_y,
-                                     xmax = table_pos_y,
-                                     ymin = -15, ymax = -11)
+  # Combine the plot and table
+  graph <- graph + annotation_custom(grob=tabela_grob, 
+                                     xmin=table_pos_y, 
+                                     xmax=table_pos_y, 
+                                     ymin=-15, ymax=-11)
   
   return(graph)
 }
 
-#### Robustness - Removing Flooded Municipalities ####
+### Including first year a neighbor had a disaster ####
+library(sf)
+# Reading municipality geometries for the year 2020 with detailed geometry
+mun_geom <- geobr::read_municipality(year = 2020, simplified = FALSE) %>%
+  select(code = code_muni) %>%  # Select and rename the municipality code column
+  left_join(dados %>% distinct(code,first_year_landslide))
 
-# Subset data to remove municipalities affected by floods
-dados_removing <- dados %>% subset(first_year_flash_flood == 0)
-dados2_removing <- dados2 %>% subset(first_year_flash_flood == 0)
+# Calculate adjacency matrix (which municipalities are neighbors)
+# st_touches identifies neighbors as those sharing a boundary
+matriz_adj <- st_touches(mun_geom)
+
+# Adding a unique ID to each row to facilitate referencing
+# This ID is helpful for indexing and mapping operations later
+mun_geom$id <- 1:nrow(mun_geom)
+
+# Create a function to extract the minimum disaster year from neighbors
+df_neighborhood <- function(id) {
+  
+  #print(id)
+  # Extract neighbor IDs from the adjacency matrix for the given municipality
+  neighborhoods_ids <- matriz_adj[[id]]
+  
+  if(length(neighborhoods_ids) == 0){
+    
+  } else {
+   
+    # Filter the geometry data frame for neighbor municipalities
+    neighborhoods_ids <- filter(mun_geom, id %in% neighborhoods_ids)
+    
+    # Filter the data frame with disaster data for these neighboring codes
+    temp1 <- dados %>% distinct(code,first_year_landslide) %>% 
+      filter(code %in% neighborhoods_ids$code)
+    temp2 <- data.frame(mun_geom[i,]) %>% select(c(code,first_year_landslide))
+    
+    df <- data.frame(code_city = temp2$code, first_year_landslide_city = temp2$first_year_landslide,
+                     code_neighborhood = temp1$code, first_year_landslide_neighborhood = temp1$first_year_landslide)
+    
+    
+    return(df)
+     
+  }
+  
+
+}
+
+# Apply the function to each municipality
+# This step calculates the minimum disaster year for the neighborhood of each municipality
+output <- lapply(1:nrow(mun_geom), df_neighborhood)
+output_append <- bind_rows(output) %>% 
+  filter(first_year_landslide_city != 0 & first_year_landslide_neighborhood == 0)
+
+# Subset the data to exclude neighboring municipalities affected by landslides
+# dados2$treated              <- ifelse(dados2$first_year_landslide == 0,0,1)
+# dados2$treated_neighborhood <- ifelse(dados2$first_year_landslide_neighborhood == 0,0,1)
+dados2_robustness <- dados2 %>% subset(!code %in% output_append$code)
 
 # Using loop to apply the function to specific variables
-output_robustness1 <- lapply(c('lurban_size', 'sprawl_index.x'), ggplot_paper)
+output_robustness <- lapply(c('lurban_size', 'sprawl_index.x'), ggplot_paper)
 
 ## Saving DiD plot
-output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_not_removing_flooded.jpg")
-ggsave(output_path, output_robustness1[[1]], width = 20, height = 10, units = "in", dpi = 100)
+output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_neighbour.jpg")
+ggsave(output_path, output_robustness[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_removing_flooded.jpg")
-ggsave(output_path, output_robustness1[[2]], width = 20, height = 10, units = "in", dpi = 100)
-
-#### Robustness - Removing Drought Municipalities ####
-
-# Subset data to remove municipalities affected by droughts
-dados_removing <- dados %>% subset(first_year_drought == 0)
-dados2_removing <- dados2 %>% subset(first_year_drought == 0)
-
-# Using loop to apply the function to specific variables
-output_robustness2 <- lapply(c('lurban_size', 'sprawl_index.x'), ggplot_paper)
-
-## Saving DiD plot
-output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_removing_drought.jpg")
-ggsave(output_path, output_robustness2[[1]], width = 20, height = 10, units = "in", dpi = 100)
-
-output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_removing_drought.jpg")
-ggsave(output_path, output_robustness2[[2]], width = 20, height = 10, units = "in", dpi = 100)
+output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_neighbour.jpg")
+ggsave(output_path, output_robustness[[2]], width = 20, height = 10, units = "in", dpi = 100)

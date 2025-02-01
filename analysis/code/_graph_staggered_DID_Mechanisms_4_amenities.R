@@ -24,7 +24,44 @@ psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 # Merge the main dataset with the PSM dataset using the "code" column
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
-# Function to create plots for robustness checks
+# df <- dados %>% 
+#   mutate(treat = ifelse(first_year_landslide %in% 0,0,1)) %>% 
+#   group_by(code,treat) %>% 
+#   dplyr::summarise(urban_size_low_risk_max_15  = sum(exp(lurban_size_low_risk_max_15.x), na.rm = T),
+#                    urban_size_high_risk_max_15 = sum(exp(lurban_size_high_risk_max_15.x), na.rm = T),
+#                    urban_size_low_risk_max_30  = sum(exp(lurban_size_low_risk_max_30.x), na.rm = T),
+#                    urban_size_high_risk_max_30 = sum(exp(lurban_size_high_risk_max_30.x), na.rm = T)) %>% 
+#   mutate(prop_high_risk_15 = urban_size_high_risk_max_15/(urban_size_high_risk_max_15+urban_size_low_risk_max_15),
+#          prop_high_risk_30 = urban_size_high_risk_max_30/(urban_size_high_risk_max_30+urban_size_low_risk_max_30),
+#          prop_low_risk_15 = urban_size_low_risk_max_15/(urban_size_high_risk_max_15+urban_size_low_risk_max_15),
+#          prop_low_risk_30 = urban_size_low_risk_max_30/(urban_size_high_risk_max_30+urban_size_low_risk_max_30)) %>% 
+#   group_by(treat) %>% 
+#   dplyr::summarise(prop_high_risk_15 = mean(prop_high_risk_15, na.rm = T),
+#                    prop_high_risk_30 = mean(prop_high_risk_30, na.rm = T),
+#                    prop_low_risk_15 = mean(prop_low_risk_15, na.rm = T),
+#                    prop_low_risk_30 = mean(prop_low_risk_30, na.rm = T))
+# 
+# df <- dados2 %>% 
+#   mutate(treat = ifelse(first_year_landslide %in% 0,0,1)) %>% 
+#   group_by(code,treat) %>% 
+#   dplyr::summarise(urban_size_low_risk_max_15  = sum(exp(lurban_size_low_risk_max_15.x), na.rm = T),
+#                    urban_size_high_risk_max_15 = sum(exp(lurban_size_high_risk_max_15.x), na.rm = T),
+#                    urban_size_low_risk_max_30  = sum(exp(lurban_size_low_risk_max_30.x), na.rm = T),
+#                    urban_size_high_risk_max_30 = sum(exp(lurban_size_high_risk_max_30.x), na.rm = T)) %>% 
+#   mutate(prop_high_risk_15 = urban_size_high_risk_max_15/(urban_size_high_risk_max_15+urban_size_low_risk_max_15),
+#          prop_high_risk_30 = urban_size_high_risk_max_30/(urban_size_high_risk_max_30+urban_size_low_risk_max_30),
+#          prop_low_risk_15 = urban_size_low_risk_max_15/(urban_size_high_risk_max_15+urban_size_low_risk_max_15),
+#          prop_low_risk_30 = urban_size_low_risk_max_30/(urban_size_high_risk_max_30+urban_size_low_risk_max_30)) %>% 
+#   group_by(treat) %>% 
+#   dplyr::summarise(prop_high_risk_15 = mean(prop_high_risk_15, na.rm = T),
+#                    prop_high_risk_30 = mean(prop_high_risk_30, na.rm = T),
+#                    prop_low_risk_15 = mean(prop_low_risk_15, na.rm = T),
+#                    prop_low_risk_30 = mean(prop_low_risk_30, na.rm = T))
+
+
+#### Main Result - Staggered DiD with PSM ####
+
+# Define a function to create plots
 ggplot_paper <- function(x){
   
   ## Paired results
@@ -35,23 +72,21 @@ ggplot_paper <- function(x){
            idname = "code",
            bstrap = TRUE,
            tname = "year",
-           data = dados2_removing), type = "dynamic")
+           data = dados2), type = "dynamic")
   
   ## Avg effect
   # Tidy up the results and select relevant columns
   est_p <- broom::tidy(mw.dyn_p) %>% select(c(event.time, estimate, std.error, conf.low, conf.high)) %>% 
     mutate(est = 'Matched Sample')
   
-  # Combine both results into one data frame
   est <- est_p
-  
 
+  
   # Z values for different confidence levels
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
   
-
   # Check significance for the paired sample
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
@@ -112,45 +147,33 @@ ggplot_paper <- function(x){
           legend.key.height = unit(1, "cm"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
-          legend.position = c(0.15, lengend_pos_y))
+          legend.position = c(0.125, lengend_pos_y))
   
   # Combine the plot and the table
   graph <- graph + annotation_custom(grob = tabela_grob,
                                      xmin = table_pos_y,
                                      xmax = table_pos_y,
                                      ymin = -15, ymax = -11)
-  
   return(graph)
 }
 
-#### Robustness - Removing Flooded Municipalities ####
+# Generate plots for 'lurban_size' and 'sprawl_index.x' using the defined function
+names <- c('_graph_mechanism_amenities_prop_urban_size_high_risk_max_15.x',
+           '_graph_mechanism_amenities_prop_urban_size_high_risk_max_30.x',
+           '_graph_mechanism_amenities_prop_urban_size_high_risk_max_45.x',
+           '_graph_mechanism_amenities_lurban_size_high_risk_max_15.x','_graph_mechanism_amenities_lurban_size_low_risk_max_15.x',
+           '_graph_mechanism_amenities_lurban_size_high_risk_max_30.x','_graph_mechanism_amenities_lurban_size_low_risk_max_30.x',
+           '_graph_mechanism_amenities_lurban_size_high_risk_max_45.x','_graph_mechanism_amenities_lurban_size_low_risk_max_45.x')
 
-# Subset data to remove municipalities affected by floods
-dados_removing <- dados %>% subset(first_year_flash_flood == 0)
-dados2_removing <- dados2 %>% subset(first_year_flash_flood == 0)
 
-# Using loop to apply the function to specific variables
-output_robustness1 <- lapply(c('lurban_size', 'sprawl_index.x'), ggplot_paper)
+output <- lapply(gsub("_graph_mechanism_amenities_","",names), ggplot_paper)
 
-## Saving DiD plot
-output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_not_removing_flooded.jpg")
-ggsave(output_path, output_robustness1[[1]], width = 20, height = 10, units = "in", dpi = 100)
+#### Saving DiD plot ####
 
-output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_removing_flooded.jpg")
-ggsave(output_path, output_robustness1[[2]], width = 20, height = 10, units = "in", dpi = 100)
 
-#### Robustness - Removing Drought Municipalities ####
+# Save the plot for Urban Size
+# Loop para salvar cada gráfico no diretório com o nome apropriado
+for (i in seq_along(output)) {
+  ggsave(filename = paste0(path_output_git,gsub("\\.x","",names[i]),".jpg"), plot = output[[i]], width = 20, height = 10, units = "in", dpi = 100)
+}
 
-# Subset data to remove municipalities affected by droughts
-dados_removing <- dados %>% subset(first_year_drought == 0)
-dados2_removing <- dados2 %>% subset(first_year_drought == 0)
-
-# Using loop to apply the function to specific variables
-output_robustness2 <- lapply(c('lurban_size', 'sprawl_index.x'), ggplot_paper)
-
-## Saving DiD plot
-output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_removing_drought.jpg")
-ggsave(output_path, output_robustness2[[1]], width = 20, height = 10, units = "in", dpi = 100)
-
-output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_removing_drought.jpg")
-ggsave(output_path, output_robustness2[[2]], width = 20, height = 10, units = "in", dpi = 100)
