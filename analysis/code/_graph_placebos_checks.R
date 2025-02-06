@@ -9,6 +9,7 @@ library(ggplot2)     # For creating plots
 library(gridExtra)   # For arranging multiple plots
 
 # Set the paths for input and output files
+path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
 
@@ -28,21 +29,7 @@ dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 # Define a function to create plots for different land uses
 ggplot_paper <- function(x){
   
-  ## No Paired results
-  # Estimate ATT (Average Treatment Effect on the Treated) for the broader sample using the dynamic DiD approach
-  mw.dyn_np <- aggte(
-    att_gt(yname = x,
-           gname = "first_year_landslide",
-           idname = "code",
-           bstrap = TRUE,
-           tname = "year",
-           data = dados), type = "dynamic")
-  
-  ## Avg effect
-  # Tidy up the results and select relevant columns
-  est_np <- broom::tidy(mw.dyn_np) %>% select(c(event.time, estimate, std.error, conf.low, conf.high)) %>% 
-    mutate(est = 'Broader Sample')
-  
+
   ## Paired results
   # Estimate ATT for the matched sample using the dynamic DiD approach
   mw.dyn_p <- aggte(
@@ -59,29 +46,15 @@ ggplot_paper <- function(x){
     mutate(est = 'Matched Sample')
   
   # Combine both results into one data frame
-  est <- bind_rows(est_p, est_np)
+  est <- est_p
   
-  # Determine the title based on the variable name
-  title <- ifelse(grepl('urban_size', x), "A) Effect of Landslides on Urban Size",
-                  ifelse(grepl('sprawl', x), "B) Effect of Landslides on Sprawl Index",
-                         ifelse(grepl('water_size', x), "A) Effect of Landslides on Water Surface",
-                                ifelse(grepl('forest_size', x), "B) Effect of Landslides on Forest Formation",
-                                       ifelse(grepl('natural_size', x), "C) Effect of Landslides on Other Natural Land Uses", NA)))))
-  
+
   # Z values for different confidence levels
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
   
-  # Check significance for the non-paired sample
-  IC_99 <- mw.dyn_np$overall.att + c(-z_99 * mw.dyn_np$overall.se, z_99 * mw.dyn_np$overall.se)
-  IC_95 <- mw.dyn_np$overall.att + c(-z_95 * mw.dyn_np$overall.se, z_95 * mw.dyn_np$overall.se)
-  IC_90 <- mw.dyn_np$overall.att + c(-z_90 * mw.dyn_np$overall.se, z_90 * mw.dyn_np$overall.se)
-  
-  ATT_significance_np <- ifelse(all(IC_99 < 0) | all(IC_99 > 0), paste0(round(mw.dyn_np$overall.att, 4), "***"),
-                                ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_np$overall.att, 4), "**"),
-                                       ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_np$overall.att, 4), "*"),
-                                              paste(round(mw.dyn_np$overall.att, 4)))))
+
   
   # Check significance for the paired sample
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
@@ -95,8 +68,7 @@ ggplot_paper <- function(x){
   
   # Create the table as a grob (graphical object)
   dados_tabela <- data.table::data.table(
-    `ATT\n(Broader Sample)` = c(ATT_significance_np, paste0("(", round(mw.dyn_np$overall.se, 4), ")")),
-    `ATT\n(Matched Sample)` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
+    `ATT` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
   
   value = c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
@@ -111,12 +83,12 @@ ggplot_paper <- function(x){
   # Generate the table grob
   tabela_grob <- tableGrob(dados_tabela, 
                            rows = NULL, 
-                           theme = ttheme_minimal(core = list(fg_params = list(fontsize = 18)), 
-                                                  colhead = list(fg_params = list(fontsize = 18, fontface = "bold")), 
-                                                  rowhead = list(fg_params = list(fontsize = 18)))) 
+                           theme = ttheme_minimal(core = list(fg_params = list(fontsize = 30)), 
+                                                  colhead = list(fg_params = list(fontsize = 30, fontface = "bold")), 
+                                                  rowhead = list(fg_params = list(fontsize = 30)))) 
   
   # Create the plot
-  graph <- ggplot(data = est, aes(y = event.time, x = estimate, color = est, linetype = est)) +
+  graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
       aes(xmax = conf.high, xmin = conf.low),
       linewidth = 0.5, position = position_dodge(width = 0.5), linetype = 'blank'
@@ -126,14 +98,14 @@ ggplot_paper <- function(x){
       linewidth = 0.5, width = 0.5, position = position_dodge(width = 0.5)
     ) +
     geom_vline(xintercept = 0) +
-    geom_hline(yintercept = -1) +
+    geom_hline(yintercept = -.5) +
     labs(x = 'Coefficient', y = 'Period',
          color = "", linetype = "",
          title = "") +
-    scale_color_manual(name = "", values = c("black", "grey20"),
-                       labels = c('Broader Sample', 'Matched Sample')) +
-    scale_linetype_manual(name = "", values = c("solid", "dashed"),
-                          labels = c('Broader Sample', 'Matched Sample')) + 
+    # scale_color_manual(name = "", values = c("black", "grey20"),
+    #                    labels = c('Broader Sample', 'Matched Sample')) +
+    # scale_linetype_manual(name = "", values = c("solid", "dashed"),
+    #                       labels = c('Broader Sample', 'Matched Sample')) + 
     scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() + 
