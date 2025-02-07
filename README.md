@@ -1,6 +1,6 @@
 # Do Landslides Impact Urbanization Patterns? Evidence from Brazilian Cities - Replication Package
 
-**Authors:** Pedro Jorge Alves, Francisco Cavalcanti, and Ricardo C. A. Lima
+**Authors:** Ricardo C. A. Lima, Pedro Jorge Alves, Bruno Barsanetti, and Francisco Cavalcanti
 
 ## Overview
 
@@ -35,28 +35,52 @@ To replicate the results, please follow these steps:
 
 Here is a detailed explanation of the codes within `Main_analysis.R` and the results they generate:
 
-### Figure 1: Descriptive Analysis of Landslides
+### Figure 1 Descriptive Analysis of Landslides
 - `.\analysis\code\_graph_affected_disaster_municipalities.R` - Spatial Distribution of Landslides
 - `.\analysis\code\_graph_affected_disaster_south_southeast_municipalities.R` - Landslides in the Southeast
 - `.\analysis\code\_graph_disasters_occourence_by_year_region.R` - Annual Occurrence of Landslides
 
-### Figure 2: The Urban Layout of Selected Brazilian Cities
-- `.\analysis\code\_graph_urban_spraw_examples.R`
-
-### Table 1: Summary Statistics
+### Table 1 Summary Statistics
 - `.\analysis\code\_table_summary_statistics.do`
 
-### Figure 3: Landslides Effects on Urbanization Patterns
+### Figure 2 Landslides Effects on Urbanization Patterns
 - `.\analysis\code\_graph_main_urban_size.R`
 
-### Figure 4: Landslides Effects on GDP per Capita, Population, and Housing Demand
-- `.\analysis\code\_graph_staggered_DID_Mechanisms_1.R`
+### Figure 3 Effect of Landslides on Local Labor Markets
+- `.\analysis\code\_graph_staggered_DID_Mechanisms_3.R`
 
-### Figure 5: Landslides Effects on Adoption of Land-Use Regulations
+### Figure 4 Effect of Landslides on Land-Use Regulations
 - `.\analysis\code\_graph_staggered_DID_Mechanisms_2.R`
 
-### Table 2: Landslides Effects on Housing Composition
-- `.\analysis\code\_table_DID_2x2_additional_analysis.R`
+### Figure 5 Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions
+- `.\analysis\code\_graph_mechanism_amenities.R`
 
-### Appendix E.1: The Effect on Wages, Employment, and Establishments
-- `.\analysis\code\_graph_staggered_DID_Mechanisms_3.R`
+### Appendix Figure B.1 The Urban Layout of Selected Brazilian Cities
+- `.\analysis\code\_graph_urban_spraw_examples.R`
+
+### Appendix Figure B.2 Landslides Effects on Urbanization Patterns: group-specific ATTs
+- `.\analysis\code\_graph_appendix_group_hetero.R`
+
+### Appendix Table C.1 Balance Check for Treated and Control Units Before and After the Matching
+- `.\analysis\code\_table_balance_test.R`
+
+### Appendix Figure D.1 Robustness Check: Full Sample
+- `.\analysis\code\_graph_robustness_broader_sample.R`
+
+### Appendix Figure D.2 Robustness Check: Considering Only Not-Yet Treated Units
+### Appendix Figure D.3 Robustness Check: Southeast Municipalities Only
+### Appendix Figure D.4 Robustness Check: Disaster Monitored Municipalities
+### Appendix Figure D.5 Robustness Check: Other Natural Disasters
+- `.\analysis\code\_graph_robustness_checks_1.R`
+
+### Appendix Figure D.6 Robustness Check: Inclusion of Control Variables
+- `.\analysis\code\_graph_robustness_inclusion_control_variables.R`
+
+### Appendix Figure D.7 Robustness Check: Alternative Estimators
+- `.\analysis\code\_graph_alternative_estimators_.R`
+
+### Appendix Figure D.8 Robustness Check: Standard Errors Clustered by Micro-region
+- `.\analysis\code\_graph_robustness_alternative_SEs_.R`
+
+### Appendix Figure D.9 Robustness Check: The Spatial Spillovers of Landslides
+- `.\analysis\code\_graph_robustness_spillover_DID.R`
