@@ -40,9 +40,6 @@ Here is a detailed explanation of the codes within `Main_analysis.R` and the res
 - `.\analysis\code\_graph_affected_disaster_south_southeast_municipalities.R` - Landslides in the Southeast
 - `.\analysis\code\_graph_disasters_occourence_by_year_region.R` - Annual Occurrence of Landslides
 
-### Table 1 Summary Statistics
-- `.\analysis\code\_table_summary_statistics.do`
-
 ### Figure 2 Landslides Effects on Urbanization Patterns
 - `.\analysis\code\_graph_main_urban_size.R`
 
