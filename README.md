@@ -6,17 +6,12 @@
 
 You can download the replication package **[here](https://www.dropbox.com/scl/fo/5urmqltc3bvohn5qtwkbl/AKb4FIZIJ8iTR9KZlEx94t8?rlkey=1w1f79ksry5852665lvserdv0&st=3krxjljh&dl=0)** (about 26 MB).
 
-The folder is subdivided into the following directories: 1) [build](./build), 2) [analysis](./analysis). Their purposes are described below:
-
-1. **[build](./build)**: This folder contains raw data and the code to extract and clean the data. The output of this folder should be a "clean" database used for the analysis.
-2. **[analysis](./analysis)**: This folder contains the implementation of the analyses and their results, such as tables and graphs.
-
 The analysis folder is further subdivided into: a) **code**, b) **output**, described as follows:
 
 - **code**: This folder is for storing the code used for the respective task.
 - **output**: This folder is for storing the results according to the “input” and the “code”.
 
-In the `build/output` folder, there are three important databases for replicating the work:
+In the `build/output` folder in the replication package, there are three important databases for replicating the work:
 - `database_panel.rds`: This file contains the annual panel data of Brazilian municipalities.
 - `restricted_PSM_database.rds`: This file contains the selection of municipalities through the propensity score method.
 - `database_two_periods.rds`: This file contains the decadal panel data of Brazilian municipalities.
