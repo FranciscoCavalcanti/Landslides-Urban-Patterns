@@ -61,3 +61,6 @@ source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_robustness_alternative_
 
 ### Appendix Figure D.9 Robustness Check: The Spatial Spillovers of Landslides
 source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_robustness_spillover_DID.R"))
+
+### Appendix Figure D.10 Robustness Check: Effects of Landslides on Population Size
+source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_population_households.R"))

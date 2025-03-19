@@ -6,6 +6,7 @@ library(sf)          # Spatial data manipulation
 library(ggspatial)   # Spatial data visualization
 
 # Set the path for the output file
+path_input <- paste0(DROPBOX_PATH, "/build/input/")    # Path for input files
 path_output <- paste0(DROPBOX_PATH, "/build/output/")  # Path for output files
 path_output_github <- paste0(GITHUB_PATH, "/analysis/output/")  # Path for GitHub output files
 

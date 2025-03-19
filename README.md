@@ -14,7 +14,7 @@ The analysis folder is further subdivided into: a) **code**, b) **output**, desc
 In the `build/output` folder in the replication package, there are three important databases for replicating the work:
 - `database_panel.rds`: This file contains the annual panel data of Brazilian municipalities.
 - `restricted_PSM_database.rds`: This file contains the selection of municipalities through the propensity score method.
-- `database_two_periods.rds`: This file contains the decadal panel data of Brazilian municipalities.
+- `population_census_database.rds`: This file contains the decadal panel data of Brazilian municipalities.
 
 ## Analysis
 
@@ -76,3 +76,6 @@ Here is a detailed explanation of the codes within `Main_analysis.R` and the res
 
 ### Appendix Figure D.9 Robustness Check: The Spatial Spillovers of Landslides
 - `.\analysis\code\_graph_robustness_spillover_DID.R`
+
+### Appendix Figure D.10 Robustness Check: The Spatial Spillovers of Landslides
+- `.\analysis\code\_graph_population_households.R`

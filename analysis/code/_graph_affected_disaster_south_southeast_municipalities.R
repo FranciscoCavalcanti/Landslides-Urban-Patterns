@@ -7,6 +7,7 @@ library(ggspatial)       # For adding spatial elements to ggplot2
 library(tmap)            # For thematic maps
 
 # Set the paths for input and output files
+path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_github <- paste0(GITHUB_PATH, "/analysis/output/") 
 
