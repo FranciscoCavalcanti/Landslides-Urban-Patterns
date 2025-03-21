@@ -77,5 +77,5 @@ Here is a detailed explanation of the codes within `Main_analysis.R` and the res
 ### Appendix Figure D.9 Robustness Check: The Spatial Spillovers of Landslides
 - `.\analysis\code\_graph_robustness_spillover_DID.R`
 
-### Appendix Figure D.10 Robustness Check: The Spatial Spillovers of Landslides
+### Appendix Figure D.10 Robustness Check: Effects of Landslides on Population
 - `.\analysis\code\_graph_population_households.R`
