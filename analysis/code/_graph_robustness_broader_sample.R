@@ -8,6 +8,9 @@ library(staggered)   # For staggered DiD designs
 library(ggplot2)     # For creating plots
 library(gridExtra)   # For arranging multiple plots
 
+# Set Seed
+set.seed(123)
+
 # Set the paths for input and output files
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 

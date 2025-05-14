@@ -8,6 +8,9 @@ library(staggered)      # For staggered adoption Difference-in-Differences analy
 library(ggplot2)        # For data visualization
 library(gridExtra)      # For arranging multiple grid-based plots
 
+# Set Seed
+set.seed(123)
+
 # Define file paths using the specified directories
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
@@ -138,7 +141,7 @@ ggsave(output_path, output_robustness1[[2]], width = 20, height = 10, units = "i
 #### Robustness 2 - Sample of High-Risk Municipalities ####
 
 # Load cemaden data and merge with the main datasets
-cemaden <- read.csv(paste0(path_input,"monitored_cemaden.csv"),sep=";",header=TRUE)
+cemaden <- read.csv(paste0(path_output,"monitored_cemaden.csv"),sep=";",header=TRUE)
 dados_robustness  <- merge(dados, cemaden, by="code")
 #dados2_robustness <- merge(dados2, cemaden, by="code")
 output_robustness2 <- lapply(c('lurban_size','sprawl_index.x'), ggplot_paper)

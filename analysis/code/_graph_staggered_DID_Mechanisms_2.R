@@ -7,6 +7,9 @@ library(staggered)
 library(ggplot2)
 library(gridExtra)
 
+# Set Seed
+set.seed(123)
+
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 

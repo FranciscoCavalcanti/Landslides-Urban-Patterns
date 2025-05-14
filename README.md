@@ -30,52 +30,55 @@ To replicate the results, please follow these steps:
 
 Here is a detailed explanation of the codes within `Main_analysis.R` and the results they generate:
 
-### Figure 1 Descriptive Analysis of Landslides
+### Figure 1: The Distribution of Landslides Across Space and Time
 - `.\analysis\code\_graph_affected_disaster_municipalities.R` - Spatial Distribution of Landslides
 - `.\analysis\code\_graph_affected_disaster_south_southeast_municipalities.R` - Landslides in the Southeast
 - `.\analysis\code\_graph_disasters_occourence_by_year_region.R` - Annual Occurrence of Landslides
 
-### Figure 2 Landslides Effects on Urbanization Patterns
-- `.\analysis\code\_graph_main_urban_size.R`
+### Figure 2: Effects of Landslides on Urbanization Patterns
+- `.\analysis\code\_graph_main_staggered_DID.R.R`
 
-### Figure 3 Effect of Landslides on Local Labor Markets
+### Figure 3: Effect of Landslides on Local Labor Markets
 - `.\analysis\code\_graph_staggered_DID_Mechanisms_3.R`
 
-### Figure 4 Effect of Landslides on Land-Use Regulations
+### Figure 4: Effect of Landslides on Land-Use Regulations
 - `.\analysis\code\_graph_staggered_DID_Mechanisms_2.R`
 
-### Figure 5 Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions
+### Figure 5: Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions
 - `.\analysis\code\_graph_mechanism_amenities.R`
 
-### Appendix Figure B.1 The Urban Layout of Selected Brazilian Cities
+### Appendix Figure A.1: The Urban Layout of Selected Brazilian Cities
 - `.\analysis\code\_graph_urban_spraw_examples.R`
 
-### Appendix Figure B.2 Landslides Effects on Urbanization Patterns: group-specific ATTs
+### Appendix Figure A.2: Landslides Effects on Urbanization Patterns: group-specific ATTs
 - `.\analysis\code\_graph_appendix_group_hetero.R`
 
-### Appendix Table C.1 Balance Check for Treated and Control Units Before and After the Matching
+### Appendix Table B.1: Balance Check for Treated and Control Units Before and After the Matching
 - `.\analysis\code\_table_balance_test.R`
 
-### Appendix Figure D.1 Robustness Check: Full Sample
+### Appendix Figure C.1: Robustness Check: Full Sample
 - `.\analysis\code\_graph_robustness_broader_sample.R`
 
-### Appendix Figure D.2 Robustness Check: Considering Only Not-Yet Treated Units
-### Appendix Figure D.3 Robustness Check: Southeast Municipalities Only
-### Appendix Figure D.4 Robustness Check: Disaster Monitored Municipalities
-### Appendix Figure D.5 Robustness Check: Other Natural Disasters
+### Appendix Figure C.2: Robustness Check: Considering Only Not-Yet Treated Units
+### Appendix Figure C.3: Robustness Check: Southeast Municipalities Only
+### Appendix Figure C.4: Robustness Check: Disaster Monitored Municipalities
+### Appendix Figure C.5: Robustness Check: Other Natural Disasters
 - `.\analysis\code\_graph_robustness_checks_1.R`
 
-### Appendix Figure D.6 Robustness Check: Inclusion of Control Variables
+### Appendix Figure C.6: Robustness Check: Only municipalities treated once
+- `.\analysis\code\_graph_robustness_primary_landslide_DID.R`
+
+### Appendix Figure C.7: Robustness Check: Inclusion of Control Variables
 - `.\analysis\code\_graph_robustness_inclusion_control_variables.R`
 
-### Appendix Figure D.7 Robustness Check: Alternative Estimators
+### Appendix Figure C.8: Robustness Check: Alternative Estimators
 - `.\analysis\code\_graph_alternative_estimators_.R`
 
-### Appendix Figure D.8 Robustness Check: Standard Errors Clustered by Micro-region
+### Appendix Figure C.9: Robustness Check: Standard Errors Clustered by Micro-region
 - `.\analysis\code\_graph_robustness_alternative_SEs_.R`
 
-### Appendix Figure D.9 Robustness Check: The Spatial Spillovers of Landslides
+### Appendix Figure C.10: Robustness Check: The Spatial Spillovers of Landslides
 - `.\analysis\code\_graph_robustness_spillover_DID.R`
 
-### Appendix Figure D.10 Robustness Check: Effects of Landslides on Population
+### Appendix Figure C.11: Effects of Landslides on Population Size
 - `.\analysis\code\_graph_population_households.R`
