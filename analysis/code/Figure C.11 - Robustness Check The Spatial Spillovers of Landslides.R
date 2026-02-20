@@ -7,73 +7,31 @@ library(did2s)       # For alternative DiD estimators
 library(staggered)   # For staggered DiD designs
 library(ggplot2)     # For creating plots
 library(gridExtra)   # For arranging multiple plots
+library(broom)
 
 # Set Seed
 set.seed(123)
 
-# Set paths for input and output files
+# Set the paths for input and output files
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
 
 #### Open Databases ####
 
-# Load the two periods database
-dados <- readRDS(paste0(path_output, "database_two_periods.rds"))
-population <- readRDS(paste0(path_output,'population_census_database.rds'))
-population$code <- as.numeric(population$code)
-population$year <- as.numeric(population$year)
-
-dados <- left_join(population,dados %>% select(c(code,year,
-                                                 first_year_landslide,
-                                                 landslide,total_landslide))) %>% 
-  group_by(code) %>% 
-  tidyr::fill(first_year_landslide,landslide,total_landslide, .direction = 'down')
-
-#### Including Variables ####
-
-# Create post-treatment and interaction variables for landslides
-dados <- dados %>%
-  mutate(post = ifelse(year >= first_year_landslide, 1, 0)) %>%
-  mutate(postland = landslide * post) %>%
-  mutate(postland2 = total_landslide * post)
-
-
-
-# Subset data for landslides occurring before 2011
-#dados <- dados %>% subset(first_year_landslide < 2011)
-
-#### Utilizing PSM ####
-
-# Load the PSM database
+# Load datasets from the specified file paths
+dados <- readRDS(paste0(path_output, "database_panel.rds"))
 psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 
-# Merge PSM data with the main dataset
-dados2 <- merge(dados, psm[, c("code", "weights", "region")], by = "code")
-#dados2 <- subset(dados2, first_year_landslide < 2011)
+#### Selecting the Treated/Control Group Using PSM ####
 
+# Merge the main dataset with the PSM dataset using the "code" column
+dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
-dados2 <- dados2 %>% mutate(
-  first_year_landslide = ifelse(between(first_year_landslide,2003,2010),2,
-                         ifelse(between(first_year_landslide,2011,2022),3,
-                         first_year_landslide)),
-  year = ifelse(year == 2000,1,
-         ifelse(year == 2010,2,
-         3)),
-)
+#### Robustness 1 - Sample removing Neighbour Municipalities affected by Landslides ####
 
-
-dados2$lpopulation <- log(dados2$population)
-dados2$lurban_population <- log(dados2$urban_population)
-dados2$lhouseholds <- log(dados2$households)
-dados2$lurban_households <- log(dados2$urban_households)
-
-
-
-
-# Define a function to create plots
+# Function to create plots for robustness checks
 ggplot_paper <- function(x){
-  
   
   ## Paired results
   # Estimate ATT for the matched sample using the dynamic DiD approach
@@ -82,8 +40,10 @@ ggplot_paper <- function(x){
            gname = "first_year_landslide",
            idname = "code",
            bstrap = TRUE,
+           clustervars = 'code',
+           base_period="universal",
            tname = "year",
-           data = dados2), type = "dynamic")
+           data = dados2_robustness), type = "dynamic")
   
   ## Avg effect
   # Tidy up the results and select relevant columns
@@ -93,14 +53,13 @@ ggplot_paper <- function(x){
   # Combine both results into one data frame
   est <- est_p
   
-  
+
   # Z values for different confidence levels
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
   
-  
-  
+
   # Check significance for the paired sample
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
@@ -117,7 +76,7 @@ ggplot_paper <- function(x){
   )
   
   value = c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
-  sequencia <- seq(min(est$conf.low), max(est$conf.high), length.out = 1000)
+  sequencia <- seq(min(est$conf.low, na.rm = T), max(est$conf.high, na.rm = T), length.out = 1000)
   # Calculate the quantiles at 10% and 75%
   quantil_10 <- quantile(sequencia, probs = 0.18)
   quantil_75 <- quantile(sequencia, probs = 0.91)
@@ -140,10 +99,10 @@ ggplot_paper <- function(x){
     ) +
     geom_errorbar(
       aes(xmax = conf.high, xmin = conf.low),
-      linewidth = 0.5, width = 0.1, position = position_dodge(width = 0.5)
+      linewidth = 0.5, width = 0.5, position = position_dodge(width = 0.5)
     ) +
     geom_vline(xintercept = 0) +
-    geom_hline(yintercept = -.5) +
+    geom_hline(yintercept = -1) +
     labs(x = 'Coefficient', y = 'Period',
          color = "", linetype = "",
          title = "") +
@@ -151,7 +110,7 @@ ggplot_paper <- function(x){
     #                    labels = c('Broader Sample', 'Matched Sample')) +
     # scale_linetype_manual(name = "", values = c("solid", "dashed"),
     #                       labels = c('Broader Sample', 'Matched Sample')) + 
-    scale_y_continuous(breaks = seq(-16, 16, by = 1)) +
+    scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() + 
     theme(text = element_text(size = 25),
@@ -160,28 +119,78 @@ ggplot_paper <- function(x){
           legend.key.width = unit(1.5, "cm"),
           legend.key.height = unit(1, "cm"),
           panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank())
+          panel.grid.minor.x = element_blank(),
+          legend.position = c(0.15, lengend_pos_y))
   
-  # Combine the plot and the table
-  graph <- graph + annotation_custom(grob = tabela_grob,
-                                     xmin = table_pos_y,
-                                     xmax = table_pos_y,
-                                     ymin = -1, ymax = -1)
+  # Combine the plot and table
+  graph <- graph + annotation_custom(grob=tabela_grob, 
+                                     xmin=table_pos_y, 
+                                     xmax=table_pos_y, 
+                                     ymin=-15, ymax=-11)
   
-
   return(graph)
 }
 
-# Generate plots for 'lurban_size' and 'sprawl_index.x' using the defined function
-output <- lapply(c('lpopulation','lurban_population','lhouseholds','lurban_households'), ggplot_paper)
+### Including first year a neighbor had a disaster ####
+library(sf)          # Simple features (sf) for spatial operations
+# Reading municipality geometries for the year 2020 with detailed geometry
+mun_geom <- geobr::read_municipality(year = 2020, simplified = FALSE) %>%
+  select(code = code_muni) %>%  # Select and rename the municipality code column
+  left_join(dados %>% distinct(code,first_year_landslide))
 
-output[[2]]
+# Calculate adjacency matrix (which municipalities are neighbors)
+# st_touches identifies neighbors as those sharing a boundary
+matriz_adj <- st_touches(mun_geom)
 
-#### Saving DiD plot ####
+# Adding a unique ID to each row to facilitate referencing
+# This ID is helpful for indexing and mapping operations later
+mun_geom$id <- 1:nrow(mun_geom)
 
-# Save plot
-ggsave(paste0(path_output_git, "_graph_lurban_population_census.jpg"),
-       output[[2]], width = 20, height = 10, units = "in", dpi = 100)
+# Create a function to extract the minimum disaster year from neighbors
+df_neighborhood <- function(id) {
+  
+  print(id)
+  # Extract neighbor IDs from the adjacency matrix for the given municipality
+  neighborhoods_ids <- matriz_adj[[id]]
+  
+  if(length(neighborhoods_ids) == 0){
+    
+  } else {
+   
+    # Filter the geometry data frame for neighbor municipalities
+    neighborhoods_ids <- filter(mun_geom, id %in% neighborhoods_ids)
+    
+    # Filter the data frame with disaster data for these neighboring codes
+    temp1 <- dados %>% distinct(code,first_year_landslide) %>% 
+      filter(code %in% neighborhoods_ids$code)
+    temp2 <- data.frame(mun_geom[id,]) %>% select(c(code,first_year_landslide))
+    
+    df <- data.frame(code_city = temp2$code, first_year_landslide_city = temp2$first_year_landslide,
+                     code_neighborhood = temp1$code, first_year_landslide_neighborhood = temp1$first_year_landslide)
+    
+    
+    return(df)
+     
+  }
+  
 
-ggsave(paste0(path_output_git, "_graph_lurban_households_census.jpg"),
-       output[[4]], width = 20, height = 10, units = "in", dpi = 100)
+}
+
+# Apply the function to each municipality
+# This step calculates the minimum disaster year for the neighborhood of each municipality
+output <- lapply(1:nrow(mun_geom), df_neighborhood)
+output_append <- bind_rows(output) %>% 
+  filter(first_year_landslide_city != 0 & first_year_landslide_neighborhood == 0)
+
+# Subset the data to exclude neighboring municipalities affected by landslides
+dados2_robustness <- dados2 %>% subset(!code %in% output_append$code_city)
+
+# Using loop to apply the function to specific variables
+output_robustness <- lapply(c('lurban_size', 'sprawl_index'), ggplot_paper)
+
+## Saving DiD plot
+output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_neighbour.jpg")
+ggsave(output_path, output_robustness[[1]], width = 20, height = 10, units = "in", dpi = 100)
+
+output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_neighbour.jpg")
+ggsave(output_path, output_robustness[[2]], width = 20, height = 10, units = "in", dpi = 100)

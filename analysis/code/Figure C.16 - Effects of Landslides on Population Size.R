@@ -7,27 +7,71 @@ library(did2s)       # For alternative DiD estimators
 library(staggered)   # For staggered DiD designs
 library(ggplot2)     # For creating plots
 library(gridExtra)   # For arranging multiple plots
+library(tidyr)      # Data reshaping
+library(broom)
 
 # Set Seed
 set.seed(123)
 
-# Set the paths for input and output files
+# Set paths for input and output files
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
 
 #### Open Databases ####
 
-# Load datasets from the specified file paths
-dados <- readRDS(paste0(path_output, "database_panel.rds"))
+# Load the two periods database
+dados <- readRDS(paste0(path_output, "database_three_periods.rds"))
+
+
+#### Including Variables ####
+
+# Create post-treatment and interaction variables for landslides
+dados <- dados %>%
+  group_by(code) %>%
+  mutate(landslide = ifelse(is.na(landslide),0,landslide),
+         first_year_landslide = ifelse(is.na(first_year_landslide),0,first_year_landslide),
+         landslide = ifelse(landslide > 0, 1, 0),
+         total_landslide = sum(landslide, na.rm = TRUE), .groups = "drop",
+         post = ifelse(year >= first_year_landslide, 1, 0),
+         postland = landslide * post,
+         postland2 = total_landslide * post)
+
+
+
+# Subset data for landslides occurring before 2011
+#dados <- dados %>% subset(first_year_landslide < 2011)
+
+#### Utilizing PSM ####
+
+# Load the PSM database
 psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 
-#### Selecting the Treated/Control Group Using PSM ####
+# Merge PSM data with the main dataset
+dados2 <- merge(dados, psm[, c("code", "weights", "region")], by = "code")
+#dados2 <- subset(dados2, first_year_landslide < 2011)
 
-# Merge the main dataset with the PSM dataset using the "code" column
-dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
-#### Main Result - Staggered DiD with PSM ####
+## Urban area
+
+
+
+dados2 <- dados2 %>% mutate(
+  first_year_landslide = ifelse(between(first_year_landslide,2003,2010),2,
+                                ifelse(between(first_year_landslide,2011,2022),3,
+                                       first_year_landslide)),
+  year = ifelse(year == 2000,1,
+                ifelse(year == 2010,2,
+                       3)),
+)
+
+dados2$lurban_population <- log(dados2$urban_population)
+dados2$lurban_households <- log(dados2$urban_households)
+dados2$density <- dados2$urban_population/dados2$urban_size
+dados2$ldensity <- log(dados2$density)
+dados2$lurban_size <- log(dados2$urban_size)  
+
+
 
 # Define a function to create plots
 ggplot_paper <- function(x){
@@ -40,7 +84,9 @@ ggplot_paper <- function(x){
            gname = "first_year_landslide",
            idname = "code",
            bstrap = TRUE,
+           base_period="universal",
            tname = "year",
+           clustervars = 'code',
            data = dados2), type = "dynamic")
   
   ## Avg effect
@@ -65,9 +111,9 @@ ggplot_paper <- function(x){
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
   
   ATT_significance_p <- ifelse(all(IC_99 < 0) | all(IC_99 > 0), paste0(round(mw.dyn_p$overall.att, 4), "***"),
-                        ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
-                        ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
-                        paste(round(mw.dyn_p$overall.att, 4)))))
+                               ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
+                                      ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
+                                             paste(round(mw.dyn_p$overall.att, 4)))))
   
   # Create the table as a grob (graphical object)
   dados_tabela <- data.table::data.table(
@@ -75,7 +121,7 @@ ggplot_paper <- function(x){
   )
   
   value = c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
-  sequencia <- seq(min(est$conf.low), max(est$conf.high), length.out = 1000)
+  sequencia <- seq(min(est$conf.low, na.rm = T), max(est$conf.high, na.rm = T), length.out = 1000)
   # Calculate the quantiles at 10% and 75%
   quantil_10 <- quantile(sequencia, probs = 0.18)
   quantil_75 <- quantile(sequencia, probs = 0.91)
@@ -98,10 +144,10 @@ ggplot_paper <- function(x){
     ) +
     geom_errorbar(
       aes(xmax = conf.high, xmin = conf.low),
-      linewidth = 0.5, width = 0.5, position = position_dodge(width = 0.5)
+      linewidth = 0.5, width = 0.1, position = position_dodge(width = 0.5)
     ) +
     geom_vline(xintercept = 0) +
-    geom_hline(yintercept = -.5) +
+    geom_hline(yintercept = -1) +
     labs(x = 'Coefficient', y = 'Period',
          color = "", linetype = "",
          title = "") +
@@ -109,7 +155,7 @@ ggplot_paper <- function(x){
     #                    labels = c('Broader Sample', 'Matched Sample')) +
     # scale_linetype_manual(name = "", values = c("solid", "dashed"),
     #                       labels = c('Broader Sample', 'Matched Sample')) + 
-    scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
+    scale_y_continuous(breaks = seq(-16, 16, by = 1)) +
     coord_flip() +
     theme_minimal() + 
     theme(text = element_text(size = 25),
@@ -118,26 +164,33 @@ ggplot_paper <- function(x){
           legend.key.width = unit(1.5, "cm"),
           legend.key.height = unit(1, "cm"),
           panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          legend.position = c(0.125, lengend_pos_y))
+          panel.grid.minor.x = element_blank())
   
   # Combine the plot and the table
   graph <- graph + annotation_custom(grob = tabela_grob,
                                      xmin = table_pos_y,
                                      xmax = table_pos_y,
-                                     ymin = -15, ymax = -11)
+                                     ymin = -2, ymax = -2)
+  
+
   return(graph)
 }
 
-# Generate plots for 'lurban_size' and 'sprawl_index.x' using the defined function
-output <- lapply(c('lurban_size', 'sprawl_index.x'), ggplot_paper)
+### Generate plots for population, households and density using the defined function ###
+
+output <- lapply(c('lurban_population',
+                   'lurban_households',
+                   'ldensity', 'lurban_size'), ggplot_paper)
+
 
 #### Saving DiD plot ####
 
-# Save the plot for Urban Size
-lurban_size_output_path <- paste0(path_output_git, "_graph_main_urban_size.jpg")
-ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
+# Save plot
+ggsave(paste0(path_output_git, "_graph_lurban_population_census.jpg"),
+       output[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-# Save the plot for Sprawl Index
-sprawl_index_output_path <- paste0(path_output_git, "_graph_main_sprawl_index.jpg")
-ggsave(sprawl_index_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)
+ggsave(paste0(path_output_git, "_graph_lurban_households_census.jpg"),
+       output[[2]], width = 20, height = 10, units = "in", dpi = 100)
+
+ggsave(paste0(path_output_git, "_graph_density_census.jpg"),
+       output[[3]], width = 20, height = 10, units = "in", dpi = 100)

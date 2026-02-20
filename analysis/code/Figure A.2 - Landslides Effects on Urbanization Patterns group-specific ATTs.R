@@ -38,7 +38,9 @@ ggplot_paper <- function(x){
                      gname = "first_year_landslide",
                      idname = "code",
                      bstrap = TRUE,
+                     base_period="universal",
                      tname = "year",
+                     clustervars = 'code',
                      data = dados2)
   
   ## Avg effect
@@ -69,7 +71,7 @@ ggplot_paper <- function(x){
         aes(xmax = conf.high, xmin = conf.low),
         linewidth = 0.5, width = 0.5, position = position_dodge(width = 0.5)
       ) +
-      geom_hline(yintercept = event.point-0.5) +
+      geom_hline(yintercept = event.point-1) +
       geom_vline(xintercept = 0) +
       labs(x = 'Coefficient', y = 'Period',
            color = "", linetype = "",
@@ -96,8 +98,8 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Generate plots for 'lurban_size' and 'sprawl_index.x' using the defined function
-output <- lapply(c('lurban_size', 'sprawl_index.x'), ggplot_paper)
+# Generate plots for 'lurban_size' and 'sprawl_index' using the defined function
+output <- lapply(c('lurban_size', 'sprawl_index'), ggplot_paper)
 
 #### Saving DiD plot ####
 
