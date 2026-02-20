@@ -4,7 +4,7 @@
 
 ## Overview
 
-You can download the replication package **[here](https://www.dropbox.com/scl/fo/5urmqltc3bvohn5qtwkbl/AKb4FIZIJ8iTR9KZlEx94t8?rlkey=1w1f79ksry5852665lvserdv0&st=3krxjljh&dl=0)** (about 26 MB).
+You can download the replication package **[here](https://www.dropbox.com/scl/fo/5urmqltc3bvohn5qtwkbl/AKb4FIZIJ8iTR9KZlEx94t8?rlkey=1w1f79ksry5852665lvserdv0&st=3krxjljh&dl=0)** (about 47 MB).
 
 The analysis folder is subdivided into:
 
