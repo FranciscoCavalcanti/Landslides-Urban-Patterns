@@ -40,16 +40,19 @@ source(paste0(GITHUB_PATH, "/analysis/code/Figure C.4 - Robustness Check Disaste
 source(paste0(GITHUB_PATH, "/analysis/code/Figure C.5 - Robustness Check Other Natural Disasters.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure C.6 - Robustness Check Only municipalities treated once.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure C.7 - Robustness Check Inclusion of Control Variables.R"))
-source(paste0(GITHUB_PATH, "/analysis/code/Figure C.8 - Robustness Check Inclusion of State-by-Year Fixed Effects.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.8 - Robustness Check Accounting for State-Specific Shocks.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure C.9 - Robustness Check Alternative Estimators.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure C.10 - Robustness Check Standard Errors Clustered by Micro-region.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure C.11 - Robustness Check The Spatial Spillovers of Landslides.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure C.12 - Robustness Check Alternative Time Horizons.R"))
-source(paste0(GITHUB_PATH, "/analysis/code/Figure C.14 - Robustness to Aggregation at the Urban Agglomeration Level.R"))
-source(paste0(GITHUB_PATH, "/analysis/code/Figure C.15 - Robustness Check Excluding the Smallest and Largest Municipalities.R"))
-source(paste0(GITHUB_PATH, "/analysis/code/Figure C.16 - Effects of Landslides on Population Size.R"))
-source(paste0(GITHUB_PATH, "/analysis/code/Figure C.17 Robustness Effects of Extreme Rainfall in Mountainous Regions.R"))
+#source(paste0(GITHUB_PATH, "/analysis/code/Figure C.13 - Robustness Check Synthetic Difference-in-Differences.do"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.14 - Robustness Check Aggregation at the Metropolitan Region Level.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.15 - Robustness Check Excluding Smallest and Largest Municipalities.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.16 - Robustness Check Effects of Extreme Rainfall in Mountain Ranges.R"))
 
 # ---- Appendix D ----
 source(paste0(GITHUB_PATH, "analysis/code/Figure D.1 Heterogeneous Effects of Landslides by Municipal Characteristics.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure D.2 Effects of Landslides on Population and Number of Households.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Table D.1  - Long-Term Differences.R"))
+
 
