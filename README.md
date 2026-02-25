@@ -21,7 +21,7 @@ In the `build/output` folder of the replication package, the following datasets 
 
 ---
 
-## Analysis
+## How to Replicate the Results
 
 To replicate the results, please follow these steps:
 
@@ -53,7 +53,9 @@ Below is the updated mapping between scripts and the figures/tables they generat
 
 ---
 
-### Figure 1: The Distribution of Landslides Across Space and Time
+## Main Figures
+
+### Figure 1 – The Distribution of Landslides Across Space and Time
 
 * `analysis/code/Figure 1 - Panel A The Distribution of Landslides Across Space and Time.R`
 * `analysis/code/Figure 1 - Panel B The Distribution of Landslides Across Space and Time.R`
@@ -61,47 +63,47 @@ Below is the updated mapping between scripts and the figures/tables they generat
 
 ---
 
-### Figure 2: Effects of Landslides on Urbanization Patterns
+### Figure 2 – Effects of Landslides on Urbanization Patterns
 
 * `analysis/code/Figure 2 - Effects of Landslides on Urbanization Patterns.R`
 
 ---
 
-### Figure 3: Effect of Landslides on Local Labor Markets
+### Figure 3 – Effect of Landslides on Local Labor Markets
 
 * `analysis/code/Figure 3 - Effect of Landslides on Local Labor Markets.R`
 
 ---
 
-### Figure 4: Effect of Landslides on Land-Use Regulations
+### Figure 4 – Effect of Landslides on Land-Use Regulations
 
 * `analysis/code/Figure 4 - Effect of Landslides on Land-Use Regulations.R`
 
 ---
 
-### Figure 5: Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions
+### Figure 5 – Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions
 
 * `analysis/code/Figure 5 - Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions.R`
 
 ---
 
-## Appendix
-
-### Appendix A
-
-* `analysis/code/Figure A.2 - Landslides Effects on Urbanization Patterns group-specific ATTs.R`
-
-*(Figure A.1 – Urban Layout of Selected Brazilian Cities – currently commented in the master script.)*
+# Appendix
 
 ---
 
-### Appendix B
+## Appendix A
+
+* `analysis/code/Figure A.2 - Landslides Effects on Urbanization Patterns group-specific ATTs.R`
+
+---
+
+## Appendix B
 
 * `analysis/code/Table B.1 - Balance Check for Treated and Control Units Before and After the Matching.R`
 
 ---
 
-### Appendix C – Robustness Checks
+## Appendix C – Robustness Checks
 
 * `analysis/code/Figure C.1 - Robustness Check Full Sample.R`
 * `analysis/code/Figure C.2 - Robustness Check Considering Only Not-Yet Treated Units.R`
@@ -110,20 +112,21 @@ Below is the updated mapping between scripts and the figures/tables they generat
 * `analysis/code/Figure C.5 - Robustness Check Other Natural Disasters.R`
 * `analysis/code/Figure C.6 - Robustness Check Only municipalities treated once.R`
 * `analysis/code/Figure C.7 - Robustness Check Inclusion of Control Variables.R`
-* `analysis/code/Figure C.8 - Robustness Check Inclusion of State-by-Year Fixed Effects.R`
+* `analysis/code/Figure C.8 - Robustness Check Accounting for State-Specific Shocks.R`
 * `analysis/code/Figure C.9 - Robustness Check Alternative Estimators.R`
 * `analysis/code/Figure C.10 - Robustness Check Standard Errors Clustered by Micro-region.R`
 * `analysis/code/Figure C.11 - Robustness Check The Spatial Spillovers of Landslides.R`
 * `analysis/code/Figure C.12 - Robustness Check Alternative Time Horizons.R`
-* `analysis/code/Figure C.14 - Robustness to Aggregation at the Urban Agglomeration Level.R`
-* `analysis/code/Figure C.15 - Robustness Check Excluding the Smallest and Largest Municipalities.R`
-* `analysis/code/Figure C.16 - Effects of Landslides on Population Size.R`
-* `analysis/code/Figure C.17 - Robustness Effects of Extreme Rainfall in Mountainous Regions.R`
+* `analysis/code/Figure C.14 - Robustness Check Aggregation at the Metropolitan Region Level.R`
+* `analysis/code/Figure C.15 - Robustness Check Excluding Smallest and Largest Municipalities.R`
+* `analysis/code/Figure C.16 - Robustness Check Effects of Extreme Rainfall in Mountain Ranges.R`
+
+*(Figure C.13 – Synthetic Difference-in-Differences.do – should be run in Stata)*
 
 ---
 
-### Appendix D
+## Appendix D
 
-* `analysis/code/Figure D.1 - Heterogeneous Effects of Landslides by Municipal Characteristics.R`
-
----
+* `analysis/code/Figure D.1 Heterogeneous Effects of Landslides by Municipal Characteristics.R`
+* `analysis/code/Figure D.2 Effects of Landslides on Population and Number of Households.R`
+* `analysis/code/Table D.1  - Long-Term Differences.R`
