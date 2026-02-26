@@ -13,7 +13,6 @@ library(broom)
 set.seed(123)
 
 # Set the paths for input and output files
-path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
 
@@ -26,7 +25,7 @@ psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 #### Robustness — High-Risk (CEMADEN) with never-treated controls ####
 
 # 1) Load CEMADEN and build the high-risk sample
-cemaden <- read.csv(paste0(path_input, "monitored_cemaden.csv"),
+cemaden <- read.csv(paste0(path_output, "monitored_cemaden.csv"),
                     sep = ";", header = TRUE)
 
 # Merge with the main dataset (adjust the key name if needed)
