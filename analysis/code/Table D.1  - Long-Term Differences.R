@@ -11,6 +11,7 @@ path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
 
+
 #### Open Database for Pre-Processing PSM ####
 
 dados_psm <- readRDS(paste0(path_output,"database_two_periods.rds"))
@@ -65,45 +66,6 @@ msummary(
 )
 
 
-##### Placebo Checking #######
 
-### Subseting the Data ###
-
-dados_pl <- subset(dados2, first_year_landslide == 0 | first_year_landslide > 2010)
-
-#### Creating new Variables ####
-
-dados_pl$placebo_treated <- ifelse(dados_pl$first_year_landslide > 2010, 1L, 0L)
-dados_pl$post <- ifelse(dados_pl$year == 2010, 1L, 0L)
-dados_pl$did_placebo <- dados_pl$placebo_treated * dados_pl$post
-
-
-
-
-pl1 <- feols(prop_inadequados ~ did_placebo | code + year, data = dados_pl, cluster = ~code)
-pl2 <- feols(prop_adequados   ~ did_placebo | code + year, data = dados_pl, cluster = ~code)
-pl3 <- feols(log(urban_size)  ~ did_placebo | code + year, data = dados_pl, cluster = ~code)
-pl4 <- feols(log(urban_population) ~ did_placebo | code + year, data = dados_pl, cluster = ~code)
-pl5 <- feols(log(sprawl_index) ~ did_placebo | code + year, data = dados_pl, cluster = ~code)
-
-
-
-models2 <- list(
-  "Share of Inadequate Housing" = pl1,
-  "Share of Adequate Housing"   = pl2,
-  "Log Urban Area Size"   = pl3,
-  "Log Urban Population"   = pl4,
-  "Fragmentation Index"       = pl5
-)
-
-out_xlsx2 <- paste0(path_output_git, "_did_table_pacebo.xlsx")
-
-msummary(
-  models2,
-  coef_map = c("did_placebo" = "Landslide × Post"),
-  gof_map  = c("nobs", "r.squared", "adj.r.squared"),
-  fmt      = 4,
-  output   = out_xlsx2
-)
 
 
