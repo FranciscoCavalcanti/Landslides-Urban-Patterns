@@ -14,56 +14,45 @@ GITHUB_PATH <- "INSERT YOUR DIRECTORY PATH HERE/Landslides-Urban-Patterns"
 setwd(GITHUB_PATH)
 
 # Source (execute) the R script files containing various analyses and graphs
+# ---- Figures 1.x ----
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 1 - Panel A The Distribution of Landslides Across Space and Time.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 1 - Panel B The Distribution of Landslides Across Space and Time.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 1 - Panel C The Distribution of Landslides Across Space and Time.R"))
 
-### Figure 1: The Distribution of Landslides Across Space and Time
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_affected_disaster_municipalities.R"))
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_affected_disaster_south_southeast_municipalities.R"))
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_disasters_occourence_by_year_region.R"))
+# ---- Figures 2–5 ----
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 2 - Effects of Landslides on Urbanization Patterns.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 3 - Effect of Landslides on Local Labor Markets.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 4 - Effect of Landslides on Land-Use Regulations.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 5 - Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions.R"))
 
-### Figure 2: Effects of Landslides on Urbanization Patterns
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_main_staggered_DID.R"))
+# ---- Appendix A ----
+# source(paste0(GITHUB_PATH, "/analysis/code/Figure A.1 - The Urban Layout of Selected Brazilian Cities.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure A.2 - Landslides Effects on Urbanization Patterns group-specific ATTs.R"))
 
-### Figure 3: Effect of Landslides on Local Labor Markets
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_staggered_DID_Mechanisms_3.R"))
+# ---- Appendix B ----
+source(paste0(GITHUB_PATH, "/analysis/code/Table B.1 - Balance Check for Treated and Control Units Before and After the Matching.R"))
 
-### Figure 4: Effect of Landslides on Land-Use Regulations
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_staggered_DID_Mechanisms_2.R"))
+# ---- Appendix C ----
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.1 - Robustness Check Full Sample.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.2 - Robustness Check Considering Only Not-Yet Treated Units.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.3 - Robustness Check Southeast-Only and Southeast-Excluded.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.4 - Robustness Check Disaster Monitored Municipalities.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.5 - Robustness Check Other Natural Disasters.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.6 - Robustness Check Only municipalities treated once.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.7 - Robustness Check Inclusion of Control Variables.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.8 - Robustness Check Accounting for State-Specific Shocks.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.9 - Robustness Check Alternative Estimators.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.10 - Robustness Check Standard Errors Clustered by Micro-region.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.11 - Robustness Check The Spatial Spillovers of Landslides.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.12 - Robustness Check Alternative Time Horizons.R"))
+#source(paste0(GITHUB_PATH, "/analysis/code/Figure C.13 - Robustness Check Synthetic Difference-in-Differences.do"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.14 - Robustness Check Aggregation at the Metropolitan Region Level.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.15 - Robustness Check Excluding Smallest and Largest Municipalities.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure C.16 - Robustness Check Effects of Extreme Rainfall in Mountain Ranges.R"))
 
-### Figure 5: Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_mechanism_amenities.R"))
+# ---- Appendix D ----
+source(paste0(GITHUB_PATH, "analysis/code/Figure D.1 Heterogeneous Effects of Landslides by Municipal Characteristics.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure D.2 Effects of Landslides on Population and Number of Households.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Table D.1  - Long-Term Differences.R"))
 
-### Appendix Figure A.1: The Urban Layout of Selected Brazilian Cities
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_urban_spraw_examples.R"))
 
-### Appendix Figure A.2: Landslides Effects on Urbanization Patterns: group-specific ATTs
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_appendix_group_hetero.R"))
-
-### Appendix Table B.1: Balance Check for Treated and Control Units Before and After the Matching
-source(file = paste0(GITHUB_PATH, "/analysis/code/_table_balance_test.R"))
-
-### Appendix Figure C.1: Robustness Check: Full Sample
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_robustness_broader_sample.R"))
-
-### Appendix Figure C.2: Robustness Check: Considering Only Not-Yet Treated Units
-### Appendix Figure C.3: Robustness Check: Southeast Municipalities Only
-### Appendix Figure C.4: Robustness Check: Disaster Monitored Municipalities
-### Appendix Figure C.5: Robustness Check: Other Natural Disasters
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_robustness_checks_1.R"))
-
-### Appendix Figure C.6: Robustness Check: Only municipalities treated once
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_robustness_primary_landslide_DID.R"))
-
-### Appendix Figure C.7: Robustness Check: Inclusion of Control Variables
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_robustness_inclusion_control_variables.R"))
-
-### Appendix Figure C.8: Robustness Check: Alternative Estimators
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_alternative_estimators_.R"))
-
-### Appendix Figure C.9: Robustness Check: Standard Errors Clustered by Micro-region
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_robustness_alternative_SEs_.R"))
-
-### Appendix Figure C.10: Robustness Check: The Spatial Spillovers of Landslides
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_robustness_spillover_DID.R"))
-
-### Appendix Figure C.11: Effects of Landslides on Population Size
-source(file = paste0(GITHUB_PATH, "/analysis/code/_graph_population_households.R"))

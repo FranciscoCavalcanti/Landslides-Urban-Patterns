@@ -7,6 +7,7 @@ library(did2s)       # For alternative DiD estimators
 library(staggered)   # For staggered DiD designs
 library(ggplot2)     # For creating plots
 library(gridExtra)   # For arranging multiple plots
+library(broom)
 
 # Set Seed
 set.seed(123)
@@ -27,16 +28,13 @@ psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 # Merge the main dataset with the PSM dataset using the "code" column
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
-temp <- dados2 %>% group_by(code) %>% 
-  filter(max(cummulative_landslide, na.rm = T) <= 1) %>% distinct(code)
-
-dados2 <- filter(dados2, code %in% temp$code)
-
-#### Main Result - Staggered DiD with PSM ####
-
-# Define a function to create plots
-ggplot_paper <- function(x){
+#### Function to Create Plots ####
+ggplot_paper <- function(x, clust){
   
+  if(clust != 'microregion') clust <- NULL
+  
+  print(x)
+  print(clust)
   
   ## Paired results
   # Estimate ATT for the matched sample using the dynamic DiD approach
@@ -45,7 +43,9 @@ ggplot_paper <- function(x){
            gname = "first_year_landslide",
            idname = "code",
            bstrap = TRUE,
+           base_period = "universal",
            tname = "year",
+           clustervars = clust,
            data = dados2), type = "dynamic")
   
   ## Avg effect
@@ -56,12 +56,19 @@ ggplot_paper <- function(x){
   # Combine both results into one data frame
   est <- est_p
   
+  value = c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
+  sequencia <- seq(min(est$conf.low, na.rm = T), max(est$conf.high, na.rm = T), length.out = 1000)
+  # Calculate the quantiles at 10% and 75%
+  quantil_10 <- quantile(sequencia, probs = 0.18)
+  quantil_75 <- quantile(sequencia, probs = 0.91)
+  
+  table_pos_y = ifelse(value[1] < value[2], quantil_75, quantil_10)  
+  lengend_pos_y = ifelse(value[1] < value[2], 0.75, 0.1)
   
   # Z values for different confidence levels
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
-  
   
   
   # Check significance for the paired sample
@@ -70,31 +77,23 @@ ggplot_paper <- function(x){
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
   
   ATT_significance_p <- ifelse(all(IC_99 < 0) | all(IC_99 > 0), paste0(round(mw.dyn_p$overall.att, 4), "***"),
-                               ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
-                                      ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
-                                             paste(round(mw.dyn_p$overall.att, 4)))))
+                        ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
+                        ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
+                        paste(round(mw.dyn_p$overall.att, 4)))))
   
   # Create the table as a grob (graphical object)
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
-  
-  value = c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
-  sequencia <- seq(min(est$conf.low), max(est$conf.high), length.out = 1000)
-  # Calculate the quantiles at 10% and 75%
-  quantil_10 <- quantile(sequencia, probs = 0.18)
-  quantil_75 <- quantile(sequencia, probs = 0.91)
-  
-  table_pos_y = ifelse(value[1] < value[2], quantil_75, quantil_10)  
-  lengend_pos_y = ifelse(value[1] < value[2], 0.75, 0.1)
-  
+
   # Generate the table grob
   tabela_grob <- tableGrob(dados_tabela, 
                            rows = NULL, 
                            theme = ttheme_minimal(core = list(fg_params = list(fontsize = 30)), 
                                                   colhead = list(fg_params = list(fontsize = 30, fontface = "bold")), 
                                                   rowhead = list(fg_params = list(fontsize = 30)))) 
-  
+
+
   # Create the plot
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
@@ -106,7 +105,7 @@ ggplot_paper <- function(x){
       linewidth = 0.5, width = 0.5, position = position_dodge(width = 0.5)
     ) +
     geom_vline(xintercept = 0) +
-    geom_hline(yintercept = -.5) +
+    geom_hline(yintercept = -1) +
     labs(x = 'Coefficient', y = 'Period',
          color = "", linetype = "",
          title = "") +
@@ -124,25 +123,37 @@ ggplot_paper <- function(x){
           legend.key.height = unit(1, "cm"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
-          legend.position = c(0.125, lengend_pos_y))
+          legend.position = c(0.15, lengend_pos_y))
   
   # Combine the plot and the table
   graph <- graph + annotation_custom(grob = tabela_grob,
                                      xmin = table_pos_y,
                                      xmax = table_pos_y,
                                      ymin = -15, ymax = -11)
+  
+  # Return the plot
   return(graph)
 }
 
-# Generate plots for 'lurban_size' and 'sprawl_index.x' using the defined function
-output <- lapply(c('lurban_size', 'sprawl_index.x'), ggplot_paper)
+# Using Map to generate plots for different scenarios
+output <- Map(ggplot_paper,
+              x = c('lurban_size', 'sprawl_index', 'lurban_size', 'sprawl_index'),
+              clust = c('NULL', 'NULL', 'microregion', 'microregion'))
 
-#### Saving DiD plot ####
+#### Saving Plots ####
 
-# Save the plot for Urban Size
-lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_primary_landslide_urban_size.jpg")
-ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
+# Save the robustness plot for urban size with robust SE
+lurban_size_robust_se_output_path <- paste0(path_output_git, "_graph_robustness_urban_size_robust_se.jpg")
+ggsave(lurban_size_robust_se_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-# Save the plot for Sprawl Index
-sprawl_index_output_path <- paste0(path_output_git, "_graph_robustness_primary_landslide_sprawl_index.jpg")
-ggsave(sprawl_index_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)
+# Save the robustness plot for sprawl index with robust SE
+sprawl_index_robust_se_output_path <- paste0(path_output_git, "_graph_robustness_sprawl_index_robust_se.jpg")
+ggsave(sprawl_index_robust_se_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)
+
+# Save the robustness plot for urban size with clustered municipality and time
+lurban_size_cluster_mun_time_se_output_path <- paste0(path_output_git, "_graph_robustness_urban_size_cluster_mun_time.jpg")
+ggsave(lurban_size_cluster_mun_time_se_output_path, output[[3]], width = 20, height = 10, units = "in", dpi = 100)
+
+# Save the robustness plot for sprawl index with clustered municipality and time
+sprawl_index_cluster_mun_time_se_output_path <- paste0(path_output_git, "_graph_robustness_sprawl_index_cluster_mun_time.jpg")
+ggsave(sprawl_index_cluster_mun_time_se_output_path, output[[4]], width = 20, height = 10, units = "in", dpi = 100)
