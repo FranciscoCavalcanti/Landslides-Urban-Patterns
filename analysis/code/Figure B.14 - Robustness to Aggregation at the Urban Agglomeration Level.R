@@ -113,12 +113,15 @@ ggplot_paper <- function(yname, data = dados_rm7) {
     )
   )
   
-  # Determine a reasonable x-position to place the ATT table
-  ci_vals <- c(est$conf.low, est$conf.high)
-  ci_vals <- ci_vals[is.finite(ci_vals)]
-  if (!length(ci_vals)) ci_vals <- 0
-  rng  <- range(ci_vals, na.rm = TRUE)
-  q75  <- stats::quantile(seq(rng[1], rng[2], length.out = 1000), 0.91)
+  # Determine table position (adaptive: top if estimates mostly positive, bottom if mostly negative)
+  value <- c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
+  sequencia <- seq(min(est$conf.low[is.finite(est$conf.low)], na.rm = TRUE),
+                   max(est$conf.high[is.finite(est$conf.high)], na.rm = TRUE),
+                   length.out = 1000)
+  quantil_10  <- quantile(sequencia, probs = 0.18)
+  quantil_75  <- quantile(sequencia, probs = 0.91)
+  table_pos_y <- ifelse(value[1] < value[2], quantil_75, quantil_10)
+  lengend_pos_y <- ifelse(value[1] < value[2], 0.75, 0.10)
   
   tab_dt <- data.table::data.table(`ATT` = c(ATT_txt, paste0("(", round(mw$overall.se, 4), ")")))
   tab_grob <- tableGrob(
@@ -138,21 +141,24 @@ ggplot_paper <- function(yname, data = dados_rm7) {
                   linewidth = 0.5, width = 0.5, position = position_dodge(width = 0.5)) +
     geom_vline(xintercept = 0) +
     geom_hline(yintercept = -1) +
-    labs(x = "Coefficient", y = "Event time", title = "") +
+    labs(x = "Coefficient", y = "Period", title = "") +
     scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() +
     theme(
-      text = element_text(size = 25),
+      text = element_text(size = 30),
+      legend.text = element_text(size = 25),
+      legend.title = element_text(size = 25),
+      legend.key.width = unit(1.5, "cm"),
+      legend.key.height = unit(1, "cm"),
       panel.grid.major.x = element_blank(),
-      panel.grid.minor.x = element_blank()
+      panel.grid.minor.x = element_blank(),
+      legend.position = c(0.125, lengend_pos_y)
     ) +
-    annotation_custom(grob = tab_grob, xmin = q75, xmax = q75, ymin = -15, ymax = -11)
+    annotation_custom(grob = tab_grob, xmin = table_pos_y, xmax = table_pos_y, ymin = -15, ymax = -11)
 }
 
-## 8) Run examples
+## 8) Run for lurban_size
 p1 <- ggplot_paper("lurban_size")
-p2 <- ggplot_paper("sprawl_index")
 
-ggsave(paste0(path_output_git,"graph_robustness_aggregation_urban_size.jpg"),  p1, width = 20, height = 10, units = "in", dpi = 100)
-ggsave(paste0(path_output_git,"graph_robustness_aggregation_sprawl_index.jpg"), p2, width = 20, height = 10, units = "in", dpi = 100)
+ggsave(paste0(path_output_git,"graph_robustness_aggregation_urban_size.jpg"), p1, width = 20, height = 10, units = "in", dpi = 100)

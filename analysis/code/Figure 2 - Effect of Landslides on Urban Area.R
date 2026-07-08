@@ -8,7 +8,6 @@ library(staggered)   # For staggered DiD designs
 library(ggplot2)     # For creating plots
 library(gridExtra)   # For arranging multiple plots
 library(broom)
-library(data.table)
 
 # Set Seed
 set.seed(123)
@@ -21,29 +20,13 @@ path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 #### Open Databases ####
 
 # Load datasets from the specified file paths
-
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
 psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 
 #### Selecting the Treated/Control Group Using PSM ####
 
 # Merge the main dataset with the PSM dataset using the "code" column
-
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
-
-## Robustness: drop municipalities with multiple landslide events ##
-
-setDT(dados2)
-
-# Treat 0 as no event (missing) in the yearly landslide count
-dados2[landslide == 0, landslide := NA]
-
-# Keep only municipalities with at most one landslide event over the full panel
-# (i.e., drop municipalities that experienced multiple landslides)
-dados2 <- dados2[
-  , .SD[sum(landslide, na.rm = TRUE) <= 1],
-  by = code
-]
 
 #### Main Result - Staggered DiD with PSM ####
 
@@ -58,9 +41,9 @@ ggplot_paper <- function(x){
            gname = "first_year_landslide",
            idname = "code",
            bstrap = TRUE,
-           base_period="universal",
+           clustervars = "code",
+           base_period = "universal",
            tname = "year",
-           clustervars = 'code',
            data = dados2), type = "dynamic")
   
   ## Avg effect
@@ -85,9 +68,9 @@ ggplot_paper <- function(x){
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
   
   ATT_significance_p <- ifelse(all(IC_99 < 0) | all(IC_99 > 0), paste0(round(mw.dyn_p$overall.att, 4), "***"),
-                               ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
-                                      ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
-                                             paste(round(mw.dyn_p$overall.att, 4)))))
+                        ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
+                        ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
+                        paste(round(mw.dyn_p$overall.att, 4)))))
   
   # Create the table as a grob (graphical object)
   dados_tabela <- data.table::data.table(
@@ -95,7 +78,9 @@ ggplot_paper <- function(x){
   )
   
   value = c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
-  sequencia <- seq(min(est$conf.low, na.rm = T), max(est$conf.high, na.rm = T), length.out = 1000)
+  sequencia <- seq(min(est$conf.low[is.finite(est$conf.low)]), max(est$conf.high[is.finite(est$conf.high)]),
+    length.out = 1000
+  )
   # Calculate the quantiles at 10% and 75%
   quantil_10 <- quantile(sequencia, probs = 0.18)
   quantil_75 <- quantile(sequencia, probs = 0.91)
@@ -149,15 +134,12 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Generate plots for 'lurban_size' and 'sprawl_index' using the defined function
-output <- lapply(c('lurban_size', 'sprawl_index'), ggplot_paper)
+# Generate plots for 'lurban_size'
+output <- lapply(c('lurban_size'), ggplot_paper)
 
 #### Saving DiD plot ####
 
 # Save the plot for Urban Size
-lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_primary_landslide_urban_size.jpg")
+lurban_size_output_path <- paste0(path_output_git, "_graph_main_urban_size.jpg")
 ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-# Save the plot for Sprawl Index
-sprawl_index_output_path <- paste0(path_output_git, "_graph_robustness_primary_landslide_sprawl_index.jpg")
-ggsave(sprawl_index_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)

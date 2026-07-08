@@ -7,71 +7,45 @@ library(did2s)       # For alternative DiD estimators
 library(staggered)   # For staggered DiD designs
 library(ggplot2)     # For creating plots
 library(gridExtra)   # For arranging multiple plots
-library(tidyr)      # Data reshaping
 library(broom)
+library(data.table)
 
 # Set Seed
 set.seed(123)
 
-# Set paths for input and output files
+# Set the paths for input and output files
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
 
 #### Open Databases ####
 
-# Load the two periods database
-dados <- readRDS(paste0(path_output, "database_three_periods.rds"))
+# Load datasets from the specified file paths
 
-
-#### Including Variables ####
-
-# Create post-treatment and interaction variables for landslides
-dados <- dados %>%
-  group_by(code) %>%
-  mutate(landslide = ifelse(is.na(landslide),0,landslide),
-         first_year_landslide = ifelse(is.na(first_year_landslide),0,first_year_landslide),
-         landslide = ifelse(landslide > 0, 1, 0),
-         total_landslide = sum(landslide, na.rm = TRUE), .groups = "drop",
-         post = ifelse(year >= first_year_landslide, 1, 0),
-         postland = landslide * post,
-         postland2 = total_landslide * post)
-
-
-
-# Subset data for landslides occurring before 2011
-#dados <- dados %>% subset(first_year_landslide < 2011)
-
-#### Utilizing PSM ####
-
-# Load the PSM database
+dados <- readRDS(paste0(path_output, "database_panel.rds"))
 psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 
-# Merge PSM data with the main dataset
-dados2 <- merge(dados, psm[, c("code", "weights", "region")], by = "code")
-#dados2 <- subset(dados2, first_year_landslide < 2011)
+#### Selecting the Treated/Control Group Using PSM ####
 
+# Merge the main dataset with the PSM dataset using the "code" column
 
-## Urban area
+dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
+## Robustness: drop municipalities with multiple landslide events ##
 
+setDT(dados2)
 
-dados2 <- dados2 %>% mutate(
-  first_year_landslide = ifelse(between(first_year_landslide,2003,2010),2,
-                                ifelse(between(first_year_landslide,2011,2022),3,
-                                       first_year_landslide)),
-  year = ifelse(year == 2000,1,
-                ifelse(year == 2010,2,
-                       3)),
-)
+# Treat 0 as no event (missing) in the yearly landslide count
+dados2[landslide == 0, landslide := NA]
 
-dados2$lurban_population <- log(dados2$urban_population)
-dados2$lurban_households <- log(dados2$urban_households)
-dados2$density <- dados2$urban_population/dados2$urban_size
-dados2$ldensity <- log(dados2$density)
-dados2$lurban_size <- log(dados2$urban_size)  
+# Keep only municipalities with at most one landslide event over the full panel
+# (i.e., drop municipalities that experienced multiple landslides)
+dados2 <- dados2[
+  , .SD[sum(landslide, na.rm = TRUE) <= 1],
+  by = code
+]
 
-
+#### Main Result - Staggered DiD with PSM ####
 
 # Define a function to create plots
 ggplot_paper <- function(x){
@@ -144,7 +118,7 @@ ggplot_paper <- function(x){
     ) +
     geom_errorbar(
       aes(xmax = conf.high, xmin = conf.low),
-      linewidth = 0.5, width = 0.1, position = position_dodge(width = 0.5)
+      linewidth = 0.5, width = 0.5, position = position_dodge(width = 0.5)
     ) +
     geom_vline(xintercept = 0) +
     geom_hline(yintercept = -1) +
@@ -155,7 +129,7 @@ ggplot_paper <- function(x){
     #                    labels = c('Broader Sample', 'Matched Sample')) +
     # scale_linetype_manual(name = "", values = c("solid", "dashed"),
     #                       labels = c('Broader Sample', 'Matched Sample')) + 
-    scale_y_continuous(breaks = seq(-16, 16, by = 1)) +
+    scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() + 
     theme(text = element_text(size = 25),
@@ -164,33 +138,21 @@ ggplot_paper <- function(x){
           legend.key.width = unit(1.5, "cm"),
           legend.key.height = unit(1, "cm"),
           panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank())
+          panel.grid.minor.x = element_blank(),
+          legend.position = c(0.125, lengend_pos_y))
   
   # Combine the plot and the table
   graph <- graph + annotation_custom(grob = tabela_grob,
                                      xmin = table_pos_y,
                                      xmax = table_pos_y,
-                                     ymin = -2, ymax = -2)
-  
-
+                                     ymin = -15, ymax = -11)
   return(graph)
 }
 
-### Generate plots for population, households and density using the defined function ###
-
-output <- lapply(c('lurban_population',
-                   'lurban_households',
-                   'ldensity', 'lurban_size'), ggplot_paper)
-
+# Generate plot for 'lurban_size'
+output <- lapply(c('lurban_size'), ggplot_paper)
 
 #### Saving DiD plot ####
 
-# Save plot
-ggsave(paste0(path_output_git, "_graph_lurban_population_census.jpg"),
-       output[[1]], width = 20, height = 10, units = "in", dpi = 100)
-
-ggsave(paste0(path_output_git, "_graph_lurban_households_census.jpg"),
-       output[[2]], width = 20, height = 10, units = "in", dpi = 100)
-
-ggsave(paste0(path_output_git, "_graph_density_census.jpg"),
-       output[[3]], width = 20, height = 10, units = "in", dpi = 100)
+lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_primary_landslide_urban_size.jpg")
+ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)

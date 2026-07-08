@@ -122,14 +122,7 @@ ggplot_paper <- function(x){
   table_pos_y <- ifelse(value[1] < value[2], quantil_75, quantil_10)
   lengend_pos_y <- ifelse(value[1] < value[2], 0.75, 0.10)
   
-  # Breaks on the event-time axis (keeps the -16 to 16 style; step = 2 when possible)
-  y_breaks <- tryCatch({
-    rng <- range(est$event.time, na.rm = TRUE)
-    by2 <- seq(floor(rng[1]), ceiling(rng[2]), by = 2)
-    if (length(by2) >= 3) by2 else sort(unique(est$event.time))
-  }, error = function(e) sort(unique(est$event.time)))
-  
-  # Plot (same visual style)
+  # Plot (same visual style as other robustness figures)
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(aes(xmax = conf.high, xmin = conf.low),
                     linewidth = 0.5, position = position_dodge(width = 0.5),
@@ -139,11 +132,11 @@ ggplot_paper <- function(x){
     geom_vline(xintercept = 0) +
     geom_hline(yintercept = -1) +
     labs(x = "Coefficient", y = "Period", color = "", linetype = "", title = "") +
-    scale_y_continuous(breaks = y_breaks) +
+    scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() +
     theme(
-      text = element_text(size = 25),
+      text = element_text(size = 30),
       legend.text = element_text(size = 25),
       legend.title = element_text(size = 25),
       legend.key.width = unit(1.5, "cm"),
@@ -161,16 +154,12 @@ ggplot_paper <- function(x){
   )
 }
 
-# --------- Generate plots for the two outcomes ---------
-outcomes <- c("lurban_size", "sprawl_index", "landslide_dum")
+# --------- Generate plot for lurban_size ---------
+outcomes <- c("lurban_size")
 output   <- lapply(outcomes, ggplot_paper)
-
 
 ggsave(paste0(path_output_git, "_graph_robustness_extreme_rainfall_mountainous_urban_size.jpg"),
        output[[1]], width = 20, height = 10, units = "in", dpi = 100)
-
-ggsave(paste0(path_output_git, "_graph_robustness_extreme_rainfall_mountainous_sprawl_index.jpg"),
-       output[[2]], width = 20, height = 10, units = "in", dpi = 100)
 
 # --------- Correlation (no attach) ---------
 corr <- cor(

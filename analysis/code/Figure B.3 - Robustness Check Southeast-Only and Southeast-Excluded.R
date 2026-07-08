@@ -116,26 +116,17 @@ ggplot_paper <- function(x){
 
 # --- Robustness using ONLY Southeast municipalities ---
 dados_robustness  <- dados  %>% dplyr::filter(region %in% c("Southeast"))
-output_robustness_SE <- lapply(c('lurban_size','sprawl_index'), ggplot_paper)
+output_robustness_SE <- lapply(c('lurban_size'), ggplot_paper)
 
-# Save figures (original names)
 output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_southeast.jpg")
 ggsave(output_path, output_robustness_SE[[1]], width = 20, height = 10, units = "in", dpi = 300)
-
-output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_southeast.jpg")
-ggsave(output_path, output_robustness_SE[[2]], width = 20, height = 10, units = "in", dpi = 300)
 
 
 #### Robustness 2 - Sample EXCLUDING Southeast ####
 
-# Reuse the SAME ggplot_paper() (it reads from `dados_robustness`)
 dados_robustness  <- dados %>% dplyr::filter(!region %in% c("Southeast"))
-output_robustness_noSE <- lapply(c('lurban_size','sprawl_index'), ggplot_paper)
+output_robustness_noSE <- lapply(c('lurban_size'), ggplot_paper)
 
-# Save figures (keep your previous naming pattern)
 output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_no_southeast.jpg")
 ggsave(output_path, output_robustness_noSE[[1]], width = 20, height = 10, units = "in", dpi = 300)
-
-output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_no_southeast.jpg")
-ggsave(output_path, output_robustness_noSE[[2]], width = 20, height = 10, units = "in", dpi = 300)
 

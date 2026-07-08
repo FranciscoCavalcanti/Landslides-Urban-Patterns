@@ -7,7 +7,7 @@ library(ggplot2)     # For creating plots
 library(gridExtra)   # For arranging multiple plots
 library(broom)
 library(sf)          # Spatial operations
-library(geobr)       # Brazilian geographic data
+library(arrow)       # Read parquet (cached municipality geometries; replaces broken geobr 2.0.0)
 library(data.table)  # For data.table used in the table
 library(grid)        # For unit()
 
@@ -39,8 +39,14 @@ dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 # (Optional but recommended) Work only with municipalities that exist in your sample (dados2)
 codes_sample <- sort(unique(dados2$code))
 
-# Read municipality geometries (simplified=TRUE is MUCH faster)
-mun_geom <- geobr::read_municipality(year = 2020, simplified = TRUE) %>%
+# Read municipality geometries from cached parquet — geobr 2.0.0 download consistently fails.
+# Parquet source: IPEA, cached at analysis/output/mun2020_simplified.parquet.
+# WKB conversion: arrow_binary must be cast to raw + class "WKB" before sf can read it.
+parquet_path <- paste0(GITHUB_PATH, "/analysis/output/mun2020_simplified.parquet")
+pq_raw    <- arrow::read_parquet(parquet_path)
+wkb_list  <- lapply(pq_raw[["geometry"]], function(x) structure(as.raw(x), class = "WKB"))
+mun_geom  <- sf::st_sf(data.frame(code_muni = pq_raw[["code_muni"]]),
+                        geometry = sf::st_as_sfc(wkb_list, crs = 4674)) %>%
   dplyr::select(code = code_muni) %>%
   dplyr::filter(code %in% codes_sample) %>%
   dplyr::left_join(dados %>% dplyr::distinct(code, first_year_landslide), by = "code")
@@ -164,7 +170,7 @@ ggplot_paper <- function(x){
     coord_flip() +
     theme_minimal() +
     theme(
-      text = element_text(size = 25),
+      text = element_text(size = 30),
       legend.text = element_text(size = 25),
       legend.title = element_text(size = 25),
       legend.key.width = grid::unit(1.5, "cm"),
@@ -185,14 +191,11 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Using loop to apply the function to specific variables
-output_robustness <- lapply(c("lurban_size", "sprawl_index"), ggplot_paper)
+# Generate plots for lurban_size
+output_robustness <- lapply(c("lurban_size"), ggplot_paper)
 
-
-## Saving DiD plot
+## Saving DiD plots
 
 output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_neighbour.jpg")
 ggsave(output_path, output_robustness[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_neighbour.jpg")
-ggsave(output_path, output_robustness[[2]], width = 20, height = 10, units = "in", dpi = 100)

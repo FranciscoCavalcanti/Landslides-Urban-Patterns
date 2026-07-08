@@ -165,7 +165,7 @@ ggplot_paper_data <- function(data, x){
 dados2_5000p <- subset(dados2, is.na(population) | population >= 5000)
 
 plots_5000p <- lapply(
-  c("lurban_size", "sprawl_index"),
+  c("lurban_size"),
   function(v) ggplot_paper_data(dados2_5000p, v)
 )
 
@@ -175,31 +175,19 @@ ggsave(
   width    = 20, height = 10, units = "in", dpi = 100
 )
 
-ggsave(
-  filename = paste0(path_output_git, "_graph_robustness_checks_sprawl_index_5000p.jpg"),
-  plot     = plots_5000p[[2]],
-  width    = 20, height = 10, units = "in", dpi = 100
-)
-
 # =========================
 # ROBUSTNESS B: Exclude population > 500,000 (keep NAs)
 # =========================
 dados2_500000p <- subset(dados2, is.na(population) | population <= 500000)
 
 plots_500000p <- lapply(
-  c("lurban_size", "sprawl_index"),
+  c("lurban_size"),
   function(v) ggplot_paper_data(dados2_500000p, v)
 )
 
 ggsave(
   filename = paste0(path_output_git, "_graph_robustness_urban_size_500000p.jpg"),
   plot     = plots_500000p[[1]],
-  width    = 20, height = 10, units = "in", dpi = 100
-)
-
-ggsave(
-  filename = paste0(path_output_git, "_graph_robustness_checks_sprawl_index_500000p.jpg"),
-  plot     = plots_500000p[[2]],
   width    = 20, height = 10, units = "in", dpi = 100
 )
 

@@ -23,89 +23,100 @@ path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
 psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 
+dados2 <- merge(dados, psm[, c("code", "weights", "state")], by = "code")
+
 #### Selecting the Treated/Control Group Using PSM ####
 
-# Merge the main dataset with the PSM dataset using the "code" column
-dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
+# Build a safe copy with explicit FE variables
+# - state: character -> factor
+# - year:  -> integer
+# - state_year: factor with all state×year dummies
 
-#### Main Result - Staggered DiD with PSM (control = not-yet-treated; exclude never-treated) ####
+dados2_fe <- within(dados2, {
+  state      <- as.factor(state)
+  year       <- as.integer(year)
+  state_year <- interaction(state, year, drop = TRUE)
+})
+dados2_fe <- droplevels(dados2_fe)
+# (Optional) enforce default treatment contrasts
+options(contrasts = c("contr.treatment", "contr.poly"))
 
 # Define a function to create plots
 ggplot_paper <- function(x){
   
-  ## Paired results
-  # Estimate ATT for the matched sample using the dynamic DiD approach
-  # Use not-yet-treated as control group and EXCLUDE never-treated units from the sample
+  ## State-by-year fixed effects: net them out of the outcome, then run the
+  ## Callaway-Sant'Anna estimator on the residualized outcome. Passing the
+  ## saturated state_year factor directly to att_gt's xformla makes each internal
+  ## 2x2 design matrix singular, which newer `did` versions (>= 2.3.0) correctly
+  ## reject (all ATT(g,t) become NA), so we absorb the FE up front via feols.
+  dat <- dados2_fe
+  fe_formula <- as.formula(paste0(x, " ~ 1 | state_year"))
+  dat[[paste0(x, "_sy")]] <- as.numeric(residuals(
+    fixest::feols(fe_formula, data = dat, fixef.rm = "none")
+  ))
+
+  ## Event-study ATT on the state-by-year residualized outcome
   mw.dyn_p <- aggte(
     att_gt(
-      yname  = x,
-      gname  = "first_year_landslide",
-      idname = "code",
-      bstrap = TRUE,
+      yname        = paste0(x, "_sy"),
+      gname        = "first_year_landslide",
+      idname       = "code",
+      bstrap       = TRUE,
       clustervars  = "code",
       base_period  = "universal",
-      control_group = "notyettreated",
-      tname  = "year",
-      data   = subset(dados2, first_year_landslide != 0)  # drop never-treated
+      tname        = "year",
+      data         = dat,
+      xformla      = ~ 1
     ),
     type  = "dynamic",
-    na.rm = TRUE  # drop any NA group-time effects during aggregation
+    na.rm = TRUE
   )
   
   ## Avg effect
-  # Tidy up the results and select relevant columns
-  est_p <- broom::tidy(mw.dyn_p) %>%
-    dplyr::select(event.time, estimate, std.error, conf.low, conf.high) %>%
+  est_p <- broom::tidy(mw.dyn_p) %>% 
+    dplyr::select(event.time, estimate, std.error, conf.low, conf.high) %>% 
     dplyr::mutate(est = 'Matched Sample')
-  
-  # Combine both results into one data frame
   est <- est_p
   
-  # Z values for different confidence levels
-  z_99 <- 2.576
-  z_95 <- 1.96
-  z_90 <- 1.645
-  
-  # Check significance for the paired sample
-  IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
-  IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
-  IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
-  
+  ## Significance stars for the average ATT
+  z_99 <- 2.576; z_95 <- 1.96; z_90 <- 1.645
+  IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se,  z_99 * mw.dyn_p$overall.se)
+  IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se,  z_95 * mw.dyn_p$overall.se)
+  IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se,  z_90 * mw.dyn_p$overall.se)
   ATT_significance_p <- ifelse(all(IC_99 < 0) | all(IC_99 > 0), paste0(round(mw.dyn_p$overall.att, 4), "***"),
                                ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
                                       ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
                                              paste(round(mw.dyn_p$overall.att, 4)))))
   
-  # Create the table as a grob (graphical object)
+  # ATT table
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
   
-  value <- c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
-  sequencia <- seq(
-    min(est$conf.low[is.finite(est$conf.low)]),
-    max(est$conf.high[is.finite(est$conf.high)]),
-    length.out = 1000
+  finite_bounds <- c(
+    est$conf.low[is.finite(est$conf.low)],
+    est$conf.high[is.finite(est$conf.high)],
+    est$estimate[is.finite(est$estimate)]
   )
-  # Calculate the quantiles at 10% and 75%
+  if (length(finite_bounds) == 0) finite_bounds <- c(-1, 1)
+  value <- c(abs(0 - min(finite_bounds)), abs(0 - max(finite_bounds)))
+  sequencia <- seq(min(finite_bounds), max(finite_bounds), length.out = 1000)
   quantil_10 <- quantile(sequencia, probs = 0.18)
   quantil_75 <- quantile(sequencia, probs = 0.91)
-  
-  table_pos_y  <- ifelse(value[1] < value[2], quantil_75, quantil_10)
+  table_pos_y   <- ifelse(value[1] < value[2], quantil_75, quantil_10)
   lengend_pos_y <- ifelse(value[1] < value[2], 0.75, 0.1)
   
-  # Generate the table grob
   tabela_grob <- tableGrob(
     dados_tabela,
     rows = NULL,
     theme = ttheme_minimal(
-      core    = list(fg_params = list(fontsize = 30)),
-      colhead = list(fg_params = list(fontsize = 30, fontface = "bold")),
+      core    = list(fg_params = list(fontsize = 30)), 
+      colhead = list(fg_params = list(fontsize = 30, fontface = "bold")), 
       rowhead = list(fg_params = list(fontsize = 30))
     )
   )
   
-  # Create the plot
+  # Plot (same style)
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
       aes(xmax = conf.high, xmin = conf.low),
@@ -117,9 +128,7 @@ ggplot_paper <- function(x){
     ) +
     geom_vline(xintercept = 0) +
     geom_hline(yintercept = -1) +
-    labs(x = 'Coefficient', y = 'Period',
-         color = "", linetype = "",
-         title = "") +
+    labs(x = 'Coefficient', y = 'Period', color = "", linetype = "", title = "") +
     scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() + 
@@ -138,17 +147,9 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Generate plots for 'lurban_size' and 'sprawl_index'
-output <- lapply(c('lurban_size', 'sprawl_index'), ggplot_paper)
+# Run for lurban_size only
+output <- lapply(c('lurban_size'), ggplot_paper)
 
 #### Saving DiD plot ####
-
-# Save the plot for Urban Size
-lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_not_yet_treated.jpg")
+lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_urban_size_stateyear.jpg")
 ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
-
-# Save the plot for Sprawl Index
-sprawl_index_output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_not_yet_treated.jpg")
-ggsave(sprawl_index_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)
-
-

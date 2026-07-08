@@ -140,39 +140,16 @@ ggplot_paper <- function(x, estimator){
   
 }
 
-# Using a loop to generate plots for urban_size and sprawl_index using different estimators
-output_lurban_size <- Map(x = c('lurban_size'),
-                          estimator = c('did', 'TWFE', 'did2s', 'impute'),
+# Generate only the alternative estimators used in the paper: Gardner (did2s) and Borusyak (impute)
+# Note: 'did' duplicates the main C&S result; 'TWFE' is the biased baseline — neither is shown in the paper
+output_lurban_size <- Map(x        = c('lurban_size', 'lurban_size'),
+                          estimator = c('did2s', 'impute'),
                           ggplot_paper)
-
-output_sprawl_index <- Map(x = c('sprawl_index'),
-                           estimator = c('did', 'TWFE', 'did2s', 'impute'),
-                           ggplot_paper)
-
-# Save the plots for Callaway and Sant'Anna (2020) estimator
-lurban_size_output_path <- paste0(path_output_git, "_graph_alternative_urban_size_callaway.jpg")
-ggsave(lurban_size_output_path, output_lurban_size[[1]], width = 20, height = 10, units = "in", dpi = 300)
-
-sprawl_index_output_path <- paste0(path_output_git, "_graph_alternative_sprawl_index_callaway.jpg")
-ggsave(sprawl_index_output_path, output_sprawl_index[[1]], width = 20, height = 10, units = "in", dpi = 300)
-
-# Save the plots for TWFE model
-lurban_size_output_path <- paste0(path_output_git, "_graph_alternative_urban_size_twfe.jpg")
-ggsave(lurban_size_output_path, output_lurban_size[[2]], width = 20, height = 10, units = "in", dpi = 300)
-
-sprawl_index_output_path <- paste0(path_output_git, "_graph_alternative_sprawl_index_twfe.jpg")
-ggsave(sprawl_index_output_path, output_sprawl_index[[2]], width = 20, height = 10, units = "in", dpi = 300)
 
 # Save the plots for Gardner (2021) estimator
 lurban_size_output_path <- paste0(path_output_git, "_graph_alternative_urban_size_gardner.jpg")
-ggsave(lurban_size_output_path, output_lurban_size[[3]], width = 20, height = 10, units = "in", dpi = 300)
-
-sprawl_index_output_path <- paste0(path_output_git, "_graph_alternative_sprawl_index_gardner.jpg")
-ggsave(sprawl_index_output_path, output_sprawl_index[[3]], width = 20, height = 10, units = "in", dpi = 300)
+ggsave(lurban_size_output_path, output_lurban_size[[1]], width = 20, height = 10, units = "in", dpi = 300)
 
 # Save the plots for Borusyak, Jaravel, Spiess (2021) estimator
 lurban_size_output_path <- paste0(path_output_git, "_graph_alternative_urban_size_borusyak.jpg")
-ggsave(lurban_size_output_path, output_lurban_size[[4]], width = 20, height = 10, units = "in", dpi = 300)
-
-sprawl_index_output_path <- paste0(path_output_git, "_graph_alternative_sprawl_index_borusyak.jpg")
-ggsave(sprawl_index_output_path, output_sprawl_index[[4]], width = 20, height = 10, units = "in", dpi = 300)
+ggsave(lurban_size_output_path, output_lurban_size[[2]], width = 20, height = 10, units = "in", dpi = 300)

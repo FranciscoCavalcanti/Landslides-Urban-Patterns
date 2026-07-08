@@ -135,25 +135,12 @@ ggplot_paper <- function(x, clust){
   return(graph)
 }
 
-# Using Map to generate plots for different scenarios
+# Generate only the micro-region clustered SE specification for lurban_size
 output <- Map(ggplot_paper,
-              x = c('lurban_size', 'sprawl_index', 'lurban_size', 'sprawl_index'),
-              clust = c('NULL', 'NULL', 'microregion', 'microregion'))
+              x     = c('lurban_size'),
+              clust = c('microregion'))
 
 #### Saving Plots ####
 
-# Save the robustness plot for urban size with robust SE
-lurban_size_robust_se_output_path <- paste0(path_output_git, "_graph_robustness_urban_size_robust_se.jpg")
-ggsave(lurban_size_robust_se_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
-
-# Save the robustness plot for sprawl index with robust SE
-sprawl_index_robust_se_output_path <- paste0(path_output_git, "_graph_robustness_sprawl_index_robust_se.jpg")
-ggsave(sprawl_index_robust_se_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)
-
-# Save the robustness plot for urban size with clustered municipality and time
 lurban_size_cluster_mun_time_se_output_path <- paste0(path_output_git, "_graph_robustness_urban_size_cluster_mun_time.jpg")
-ggsave(lurban_size_cluster_mun_time_se_output_path, output[[3]], width = 20, height = 10, units = "in", dpi = 100)
-
-# Save the robustness plot for sprawl index with clustered municipality and time
-sprawl_index_cluster_mun_time_se_output_path <- paste0(path_output_git, "_graph_robustness_sprawl_index_cluster_mun_time.jpg")
-ggsave(sprawl_index_cluster_mun_time_se_output_path, output[[4]], width = 20, height = 10, units = "in", dpi = 100)
+ggsave(lurban_size_cluster_mun_time_se_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)

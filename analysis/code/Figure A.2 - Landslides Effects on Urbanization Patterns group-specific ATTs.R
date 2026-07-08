@@ -98,8 +98,8 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Generate plots for 'lurban_size' and 'sprawl_index' using the defined function
-output <- lapply(c('lurban_size', 'sprawl_index'), ggplot_paper)
+# Generate plots for 'lurban_size'
+output <- lapply(c('lurban_size'), ggplot_paper)
 
 #### Saving DiD plot ####
 
@@ -107,6 +107,3 @@ output <- lapply(c('lurban_size', 'sprawl_index'), ggplot_paper)
 lurban_size_output_path <- paste0(path_output_git, "_graph_appendix_group_hetero_urban_size.jpg")
 ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-# Save the plot for Sprawl Index
-sprawl_index_output_path <- paste0(path_output_git, "_graph_appendix_group_hetero_sprawl_index.jpg")
-ggsave(sprawl_index_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)

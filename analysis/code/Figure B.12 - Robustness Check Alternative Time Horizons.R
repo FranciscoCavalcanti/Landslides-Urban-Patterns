@@ -118,7 +118,7 @@ ggplot_paper <- function(x, data_in = dados2, min_e = NULL, max_e = NULL){
     coord_cartesian(clip = "off") +  # ensure caps and table aren't cut off
     theme_minimal() +
     theme(
-      text = element_text(size = 25),
+      text = element_text(size = 30),
       panel.grid.major.y = element_blank(),
       panel.grid.minor.y = element_blank()
     ) +
@@ -128,8 +128,8 @@ ggplot_paper <- function(x, data_in = dados2, min_e = NULL, max_e = NULL){
                       ymin = table_pos_est, ymax = table_pos_est)
 }
 
-# Outcomes
-vars_to_plot <- c("lurban_size", "sprawl_index")
+# Outcome: urban size only
+vars_to_plot <- c("lurban_size")
 
 # Robustness A: event-time window [-10, +10] on dados2
 output_clip <- lapply(vars_to_plot, function(v)
@@ -142,13 +142,8 @@ output_window <- lapply(vars_to_plot, function(v)
   ggplot_paper(x = v, data_in = dados2_window)
 )
 
-# Save with your exact filenames
 lurban_size_clip_path   <- paste0(path_output_git, "_graph_robustness_urban_size_time_frame10.jpg")
-sprawl_index_clip_path  <- paste0(path_output_git, "_graph_robustness_sprawl_index_time_frame10.jpg.jpg")
 ggsave(lurban_size_clip_path,  output_clip[[1]],  width = 20, height = 10, units = "in", dpi = 100)
-ggsave(sprawl_index_clip_path, output_clip[[2]],  width = 20, height = 10, units = "in", dpi = 100)
 
 lurban_size_window_path  <- paste0(path_output_git, "_graph_robustness_urban_size_timeframe2006.jpg")
-sprawl_index_window_path <- paste0(path_output_git, "_graph_robustness_sprawl_timeframe2006.jpg.jpg")
 ggsave(lurban_size_window_path,  output_window[[1]], width = 20, height = 10, units = "in", dpi = 100)
-ggsave(sprawl_index_window_path, output_window[[2]], width = 20, height = 10, units = "in", dpi = 100)

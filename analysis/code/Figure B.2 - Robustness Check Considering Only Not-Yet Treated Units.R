@@ -23,61 +23,60 @@ path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
 psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 
-dados2 <- merge(dados, psm[, c("code", "weights", "state")], by = "code")
-
 #### Selecting the Treated/Control Group Using PSM ####
 
-# Build a safe copy with explicit FE variables
-# - state: character -> factor
-# - year:  -> integer
-# - state_year: factor with all state×year dummies
+# Merge the main dataset with the PSM dataset using the "code" column
+dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
-dados2_fe <- within(dados2, {
-  state      <- as.factor(state)
-  year       <- as.integer(year)
-  state_year <- interaction(state, year, drop = TRUE)
-})
-dados2_fe <- droplevels(dados2_fe)
-# (Optional) enforce default treatment contrasts
-options(contrasts = c("contr.treatment", "contr.poly"))
+#### Main Result - Staggered DiD with PSM (control = not-yet-treated; exclude never-treated) ####
 
 # Define a function to create plots
 ggplot_paper <- function(x){
   
-  ## Event-study ATT with state-by-year FE as covariates via precomputed factor
+  ## Paired results
+  # Estimate ATT for the matched sample using the dynamic DiD approach
+  # Use not-yet-treated as control group and EXCLUDE never-treated units from the sample
   mw.dyn_p <- aggte(
     att_gt(
-      yname        = x,
-      gname        = "first_year_landslide",
-      idname       = "code",
-      bstrap       = TRUE,
+      yname  = x,
+      gname  = "first_year_landslide",
+      idname = "code",
+      bstrap = TRUE,
       clustervars  = "code",
       base_period  = "universal",
-      tname        = "year",
-      data         = dados2_fe,
-      xformla      = ~ state_year    
+      control_group = "notyettreated",
+      tname  = "year",
+      data   = subset(dados2, first_year_landslide != 0)  # drop never-treated
     ),
     type  = "dynamic",
-    na.rm = TRUE
+    na.rm = TRUE  # drop any NA group-time effects during aggregation
   )
   
   ## Avg effect
-  est_p <- broom::tidy(mw.dyn_p) %>% 
-    dplyr::select(event.time, estimate, std.error, conf.low, conf.high) %>% 
+  # Tidy up the results and select relevant columns
+  est_p <- broom::tidy(mw.dyn_p) %>%
+    dplyr::select(event.time, estimate, std.error, conf.low, conf.high) %>%
     dplyr::mutate(est = 'Matched Sample')
+  
+  # Combine both results into one data frame
   est <- est_p
   
-  ## Significance stars for the average ATT
-  z_99 <- 2.576; z_95 <- 1.96; z_90 <- 1.645
-  IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se,  z_99 * mw.dyn_p$overall.se)
-  IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se,  z_95 * mw.dyn_p$overall.se)
-  IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se,  z_90 * mw.dyn_p$overall.se)
+  # Z values for different confidence levels
+  z_99 <- 2.576
+  z_95 <- 1.96
+  z_90 <- 1.645
+  
+  # Check significance for the paired sample
+  IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
+  IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
+  IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
+  
   ATT_significance_p <- ifelse(all(IC_99 < 0) | all(IC_99 > 0), paste0(round(mw.dyn_p$overall.att, 4), "***"),
                                ifelse(all(IC_95 < 0) | all(IC_95 > 0), paste0(round(mw.dyn_p$overall.att, 4), "**"),
                                       ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
                                              paste(round(mw.dyn_p$overall.att, 4)))))
   
-  # ATT table
+  # Create the table as a grob (graphical object)
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
@@ -88,22 +87,25 @@ ggplot_paper <- function(x){
     max(est$conf.high[is.finite(est$conf.high)]),
     length.out = 1000
   )
+  # Calculate the quantiles at 10% and 75%
   quantil_10 <- quantile(sequencia, probs = 0.18)
   quantil_75 <- quantile(sequencia, probs = 0.91)
-  table_pos_y   <- ifelse(value[1] < value[2], quantil_75, quantil_10)
+  
+  table_pos_y  <- ifelse(value[1] < value[2], quantil_75, quantil_10)
   lengend_pos_y <- ifelse(value[1] < value[2], 0.75, 0.1)
   
+  # Generate the table grob
   tabela_grob <- tableGrob(
     dados_tabela,
     rows = NULL,
     theme = ttheme_minimal(
-      core    = list(fg_params = list(fontsize = 30)), 
-      colhead = list(fg_params = list(fontsize = 30, fontface = "bold")), 
+      core    = list(fg_params = list(fontsize = 30)),
+      colhead = list(fg_params = list(fontsize = 30, fontface = "bold")),
       rowhead = list(fg_params = list(fontsize = 30))
     )
   )
   
-  # Plot (same style)
+  # Create the plot
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
       aes(xmax = conf.high, xmin = conf.low),
@@ -115,7 +117,9 @@ ggplot_paper <- function(x){
     ) +
     geom_vline(xintercept = 0) +
     geom_hline(yintercept = -1) +
-    labs(x = 'Coefficient', y = 'Period', color = "", linetype = "", title = "") +
+    labs(x = 'Coefficient', y = 'Period',
+         color = "", linetype = "",
+         title = "") +
     scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() + 
@@ -134,12 +138,12 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Run for both outcomes
-output <- lapply(c('lurban_size', 'sprawl_index'), ggplot_paper)
+# Generate plot for 'lurban_size'
+output <- lapply(c('lurban_size'), ggplot_paper)
 
 #### Saving DiD plot ####
-lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_urban_size_stateyear.jpg")
+
+lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_not_yet_treated.jpg")
 ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-sprawl_index_output_path <- paste0(path_output_git, "_graph_robusteness_sprawl_index_stateyear.jpg")
-ggsave(sprawl_index_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)
+

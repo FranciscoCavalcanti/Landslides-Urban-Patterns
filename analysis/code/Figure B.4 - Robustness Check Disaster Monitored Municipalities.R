@@ -13,6 +13,7 @@ library(broom)
 set.seed(123)
 
 # Set the paths for input and output files
+path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/") 
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
 
@@ -25,7 +26,7 @@ psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
 #### Robustness — High-Risk (CEMADEN) with never-treated controls ####
 
 # 1) Load CEMADEN and build the high-risk sample
-cemaden <- read.csv(paste0(path_output, "monitored_cemaden.csv"),
+cemaden <- read.csv(paste0(path_input, "monitored_cemaden.csv"),
                     sep = ";", header = TRUE)
 
 # Merge with the main dataset (adjust the key name if needed)
@@ -110,7 +111,7 @@ ggplot_paper <- function(x){
     coord_flip() +
     theme_minimal() +
     theme(
-      text = element_text(size = 25),
+      text = element_text(size = 30),
       legend.text  = element_text(size = 25),
       legend.title = element_text(size = 25),
       legend.key.width  = unit(1.5, "cm"),
@@ -126,12 +127,9 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# 4) Run for both outcomes
-output <- lapply(c("lurban_size", "sprawl_index"), ggplot_paper)
+# 4) Run for lurban_size only
+output <- lapply(c("lurban_size"), ggplot_paper)
 
-# 5) Save using the original high-risk (CEMADEN) filenames
+# 5) Save
 lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_high_risk.jpg")
 ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
-
-sprawl_index_output_path <- paste0(path_output_git, "_graph_robustness_checks_sprawl_index_high_risk.jpg")
-ggsave(sprawl_index_output_path, output[[2]], width = 20, height = 10, units = "in", dpi = 100)
