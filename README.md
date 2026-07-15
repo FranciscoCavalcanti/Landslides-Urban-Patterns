@@ -1,4 +1,4 @@
-# Do Landslides Impact Urbanization Patterns? Evidence from Brazilian Cities - Replication Package
+# Do Landslides Impact City Size? Evidence from Brazil - Replication Package
 
 **Authors:** Ricardo C. A. Lima, Pedro Jorge Alves, Bruno Barsanetti, and Francisco Cavalcanti
 
@@ -112,15 +112,15 @@ Below is the mapping between scripts and the figures/tables they generate.
 
 ---
 
-### Figure 6 – Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions
+### Figure 6 – Effect of Landslides on Local Labor Markets
 
-* `analysis/code/Figure 6 - Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions.R`
+* `analysis/code/Figure 6 - Effect of Landslides on Local Labor Markets.R`
 
 ---
 
-### Figure 7 – Effect of Landslides on Local Labor Markets
+### Figure 7 – Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions
 
-* `analysis/code/Figure 7 - Effect of Landslides on Local Labor Markets.R`
+* `analysis/code/Figure 7 - Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions.R`
 
 ---
 
@@ -170,6 +170,6 @@ Below is the mapping between scripts and the figures/tables they generate.
 
 ---
 
-## Appendix C – Additional Results
+## Appendix C – Conceptual Framework
 
-* `analysis/code/Figure C.1 - Heterogeneous Effects of Landslides by Municipal Characteristics.R`
+*Theoretical appendix; no replication script is associated with it.*

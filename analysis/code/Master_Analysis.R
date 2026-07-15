@@ -26,8 +26,8 @@ source(paste0(GITHUB_PATH, "/analysis/code/Figure 2 - Effect of Landslides on Ur
 source(paste0(GITHUB_PATH, "/analysis/code/Figure 3 - Effects of Landslides on Population and Households.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure 4 - Effect of Landslides on Urban Fragmentation.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure 5 - Effect of Landslides on Land-Use Regulations.R"))
-source(paste0(GITHUB_PATH, "/analysis/code/Figure 6 - Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions.R"))
-source(paste0(GITHUB_PATH, "/analysis/code/Figure 7 - Effect of Landslides on Local Labor Markets.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 6 - Effect of Landslides on Local Labor Markets.R"))
+source(paste0(GITHUB_PATH, "/analysis/code/Figure 7 - Effect of Landslides on the Urban Areas of High-Risk and Low-Risk Regions.R"))
 
 # ---- Tables 1-2 ----
 source(paste0(GITHUB_PATH, "/analysis/code/Table 1 - Balance Check for Treated and Control Units.R"))
@@ -55,6 +55,3 @@ source(paste0(GITHUB_PATH, "/analysis/code/Figure B.13 - Robustness Check Synthe
 source(paste0(GITHUB_PATH, "/analysis/code/Figure B.14 - Robustness to Aggregation at the Urban Agglomeration Level.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure B.15 - Robustness Check Excluding the Smallest and Largest Municipalities.R"))
 source(paste0(GITHUB_PATH, "/analysis/code/Figure B.16 - Robustness Check Effects of Extreme Rainfall in Mountain Ranges.R"))
-
-# ---- Appendix C ----
-source(paste0(GITHUB_PATH, "/analysis/code/Figure C.1 - Heterogeneous Effects of Landslides by Municipal Characteristics.R"))
