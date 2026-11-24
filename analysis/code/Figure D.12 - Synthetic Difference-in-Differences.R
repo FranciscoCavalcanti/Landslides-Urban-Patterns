@@ -1,26 +1,39 @@
-# Load required libraries
+# Figure D.12: robustness, synthetic difference-in-differences event study (matched sample).
+# Output: analysis/output/_graph_robustness_lurban_size_sdid_event.png
+
 library(dplyr)
+library(MatchIt)
 library(ggplot2)
 library(gridExtra)
 library(grid)
 library(synthdid)
 
-# Set Seed
 set.seed(123)
 
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
 path_output <- paste0(DROPBOX_PATH, "/build/output/")
 path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
-use_old_database <- FALSE
+
 bootstrap_reps <- 50
 bootstrap_seed <- 3854035
 
-#### Open Databases ####
+#### Data ####
 
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
-psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
+#### Matching ####
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region")
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+PSM <- matchit(landslide ~ prec_verao + prec_outono + prec_inverno + prec_primav +
+                 altitude + temp_verao + temp_inverno + temp_primav + temp_outono +
+                 avg_tri + avg_slope + region,
+               data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
 
-#### Selecting the Treated/Control Group Using PSM ####
+#### Matched sample ####
 
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
@@ -237,13 +250,6 @@ ggplot_sdid <- function(x) {
       sum(cohort_atts$att_weight)^2
   )
   se_raw <- se
-
-  # The paper figure was produced with Stata's sdid_event bootstrap.
-  # The R code reproduces the point estimates; for the old database, keep the
-  # published bootstrap SE in the annotation so the figure matches the paper.
-  if (use_old_database && x == "lurban_size") {
-    se <- 0.0053
-  }
 
   z_99 <- 2.576
   z_95 <- 1.96

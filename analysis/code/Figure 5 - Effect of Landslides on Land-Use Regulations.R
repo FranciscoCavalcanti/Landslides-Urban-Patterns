@@ -1,4 +1,8 @@
+# Figure 5: effect of landslides on the adoption of land-use regulations (Callaway and Sant'Anna, matched sample).
+# Output: analysis/output/_graph_mechanisms_{zoning,ugb,subdivision,building}_policy.jpg
+
 library(dplyr)
+library(MatchIt)
 library(fixest)
 library(did)
 library(remotes)
@@ -8,29 +12,39 @@ library(ggplot2)
 library(gridExtra)
 library(broom)
 
-# Set Seed
 set.seed(123)
 
-path_input <- paste0(DROPBOX_PATH, "/build/input/")
-path_output <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 
-#### Open Databases ####
+
+#### Data ####
 
 dados <- readRDS(paste0(path_output,"database_panel.rds"))
 
-psm <- readRDS(paste0(path_output,"restricted_PSM_database.rds"))
+#### Matching ####
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region")
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+PSM <- matchit(landslide ~ prec_verao + prec_outono + prec_inverno + prec_primav +
+                 altitude + temp_verao + temp_inverno + temp_primav + temp_outono +
+                 avg_tri + avg_slope + region,
+               data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
 
-#### Selecting the Treated/Control Group Using PSM ####
+
+#### Matched sample ####
 
 dados2 <- merge(dados, psm[,c("code","weights")], by="code")
 
-#### Mechanism: Land-Use Regulations - Staggered DiD with PSM ####
+#### Estimation ####
 
 ggplot_paper <- function(x){
   
 
-  ## Paired results
   mw.dyn_p <- aggte(
     att_gt(yname = x,
            gname = "first_year_landslide",
@@ -41,12 +55,10 @@ ggplot_paper <- function(x){
            clustervars = 'code',
            data = dados2), type = "dynamic")
   
-  ## Avg effect
   est_p <- broom::tidy(mw.dyn_p) %>% select(c(event.time, estimate,std.error,conf.low,conf.high)) %>% 
     mutate(est = 'Matched Sample')
   
   
-  # Graph
   est <- est_p
   
   
@@ -83,9 +95,9 @@ ggplot_paper <- function(x){
 
   tabela_grob <- tableGrob(dados_tabela, 
                            rows = NULL, 
-                           theme = ttheme_minimal(core = list(fg_params = list(fontsize = 30)), # Font size for the table body
-                                                  colhead = list(fg_params = list(fontsize = 30, fontface = "bold")), # Font size and bold for the header
-                                                  rowhead = list(fg_params = list(fontsize = 30)))) # Font size for row headers, if any
+                           theme = ttheme_minimal(core = list(fg_params = list(fontsize = 30)),
+                                                  colhead = list(fg_params = list(fontsize = 30, fontface = "bold")),
+                                                  rowhead = list(fg_params = list(fontsize = 30))))
   
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
@@ -101,10 +113,6 @@ ggplot_paper <- function(x){
     labs(x = 'Coefficient', y = 'Period',
          color = "", linetype = "",
          title = "") +
-    # scale_color_manual(name = "", values = c("black", "grey20"),
-    #                    labels = c('Broader Sample', 'Matched Sample')) +
-    # scale_linetype_manual(name = "", values = c("solid", "dashed"),
-    #                       labels = c('Broader Sample', 'Matched Sample')) + 
     scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() + 
@@ -126,11 +134,9 @@ ggplot_paper <- function(x){
   
 }
 
-# Using Loop ##
 output <- lapply(c('ugb_policy','zoning_policy','subdivision_policy','building_policy'),
                  ggplot_paper)
 
-# Saving Results #
 
 ugb_policy_output_path <- paste0(path_output_git, "_graph_mechanisms_ugb_policy.jpg")
 ggsave(ugb_policy_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)

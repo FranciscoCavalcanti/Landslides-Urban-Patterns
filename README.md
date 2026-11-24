@@ -31,15 +31,16 @@ All results are produced in **R**. The scripts depend on the following packages:
 
 ```r
 # CRAN
-install.packages(c("MatchIt", "arrow", "broom", "data.table", "did", "dplyr",
-                   "fixest", "furrr", "geobr", "ggplot2", "ggspatial",
-                   "gridExtra", "remotes", "sf", "terra", "tibble", "tidyr",
-                   "tidyverse", "tmap"))
+install.packages(c("MatchIt", "broom", "data.table", "did", "dplyr", "fixest",
+                   "furrr", "geobr", "ggplot2", "ggpubr", "ggspatial", "gridExtra",
+                   "pbapply", "pscl", "remotes", "sf", "stringi", "terra",
+                   "tidyr", "tidyverse", "tmap", "tmaptools"))
 
 # GitHub
 remotes::install_github("kylebutts/did2s")
 remotes::install_github("bcallaway11/staggered")
 remotes::install_github("synth-inference/synthdid")
+remotes::install_github("asheshrambachan/HonestDiD")
 ```
 
 ---
@@ -91,6 +92,7 @@ Below is the mapping between scripts and the figures/tables they generate.
 ### Figure 2 – Effect of Landslides on Urban Area
 
 * `analysis/code/Figure 2 - Effect of Landslides on Urban Area.R`
+* `analysis/code/Section 4.1 - Conditional Pre-Test (Callaway and Sant'Anna).R` *(joint test of parallel pre-trends reported in Section 4.1; the result is printed to the console)*
 
 ---
 
@@ -124,6 +126,12 @@ Below is the mapping between scripts and the figures/tables they generate.
 
 ---
 
+### Figure 8 – Robustness to Alternative Definitions of High-Risk and Low-Risk Regions
+
+* `analysis/code/Figure 8 - Robustness to Alternative Definitions of Risky Locations.R`
+
+---
+
 ## Main Tables
 
 ### Table 1 – Balance Check for Treated and Control Units Before and After the Matching
@@ -145,31 +153,68 @@ Below is the mapping between scripts and the figures/tables they generate.
 ## Appendix A – Appendix Figures
 
 * `analysis/code/Figure A.1 - The Urban Layout of Selected Brazilian Cities.R` *(requires MAPBIOMAS raster files, which are not included in the replication package due to their size)*
-* `analysis/code/Figure A.2 - Landslides Effects on Urbanization Patterns group-specific ATTs.R`
+* `analysis/code/Figure A.2 - Evolution of Urban Area for Treated and Control Municipalities.R`
+* `analysis/code/Figure A.3 - Group-Specific ATTs.R`
+* `analysis/code/Figure A.4 - Number of Treated Municipalities by Event Time.R`
 
 ---
 
-## Appendix B – Robustness Checks
+## Appendix B – Propensity Score Model
 
-* `analysis/code/Figure B.1 - Robustness Check Full Sample.R`
-* `analysis/code/Figure B.2 - Robustness Check Considering Only Not-Yet Treated Units.R`
-* `analysis/code/Figure B.3 - Robustness Check Southeast-Only and Southeast-Excluded.R`
-* `analysis/code/Figure B.4 - Robustness Check Disaster Monitored Municipalities.R`
-* `analysis/code/Figure B.5 - Robustness Check Other Natural Disasters.R`
-* `analysis/code/Figure B.6 - Robustness Check Only municipalities treated once.R`
-* `analysis/code/Figure B.7 - Robustness Check Inclusion of Control Variables.R`
-* `analysis/code/Figure B.8 - Robustness Check Inclusion of State-by-Year Fixed Effects.R`
-* `analysis/code/Figure B.9 - Robustness Check Alternative Estimators.R`
-* `analysis/code/Figure B.10 - Robustness Check Standard Errors Clustered by Micro-region.R`
-* `analysis/code/Figure B.11 - Robustness Check The Spatial Spillovers of Landslides.R`
-* `analysis/code/Figure B.12 - Robustness Check Alternative Time Horizons.R`
-* `analysis/code/Figure B.13 - Robustness Check Synthetic Difference-in-Differences.R`
-* `analysis/code/Figure B.14 - Robustness to Aggregation at the Urban Agglomeration Level.R`
-* `analysis/code/Figure B.15 - Robustness Check Excluding the Smallest and Largest Municipalities.R`
-* `analysis/code/Figure B.16 - Robustness Check Effects of Extreme Rainfall in Mountain Ranges.R`
+* `analysis/code/Table B.1 - Logit Model and Predictive Performance.R`
 
 ---
 
-## Appendix C – Conceptual Framework
+## Appendix C – Sensitivity to Parallel Trends Violations
+
+* `analysis/code/Table C.1 - Sensitivity Analysis HonestDiD.R`
+
+---
+
+## Appendix D – Robustness Checks
+
+* `analysis/code/Figure D.1 - Full Sample.R`
+* `analysis/code/Figure D.2 - Only Not-Yet Treated Units.R`
+* `analysis/code/Figure D.3 - Southeast-Only and Southeast-Excluded.R`
+* `analysis/code/Figure D.4 - Disaster-Monitored Municipalities.R`
+* `analysis/code/Figure D.5 - Extended Propensity Score Covariates.R`
+* `analysis/code/Figure D.6 - Excluding Small or Large Municipalities.R`
+* `analysis/code/Figure D.7 - Balanced Cohorts over a Fixed Window.R`
+* `analysis/code/Figure D.8 - Alternative Estimators.R`
+* `analysis/code/Figure D.9a - Alternative Inference Micro-region Clusters.R`
+* `analysis/code/Figure D.9b - Alternative Inference Matched-Pair Clusters.R`
+* `analysis/code/Figure D.10 - Aggregation at the Metropolitan Region Level.R`
+* `analysis/code/Figure D.11 - Alternative Time Horizons.R`
+* `analysis/code/Figure D.12 - Synthetic Difference-in-Differences.R`
+* `analysis/code/Figure D.13 - Other Natural Disasters.R`
+* `analysis/code/Figure D.14 - Only Municipalities Treated Once.R`
+* `analysis/code/Figure D.15 - Inclusion of Control Variables.R`
+* `analysis/code/Figure D.16 - State-Specific Shocks.R`
+* `analysis/code/Figure D.17 - Spatial Spillovers.R`
+* `analysis/code/Figure D.18 - Extreme Rainfall in Mountain Ranges.R`
+
+---
+
+## Appendix E – Heterogeneity by Worker Skill and Economic Sector
+
+* `analysis/code/Figure E.1 - Heterogeneity by Skill Group.R`
+* `analysis/code/Figure E.2 - Heterogeneity by Economic Sector.R`
+
+---
+
+## Appendix F – Conceptual Framework
 
 *Theoretical appendix; no replication script is associated with it.*
+
+---
+
+## Appendix G – Spatial Validation of the Risk Classification
+
+*Figure G.1 requires external geospatial inputs that are not included in the replication package.*
+
+---
+
+## Appendix H – Heterogeneity by Landslide Severity and Location within the City
+
+* `analysis/code/Figures H.1 and H.2 - Heterogeneity by Landslide Severity.R`
+* `analysis/code/Figure H.3 - Urban Core and Fringe.R`

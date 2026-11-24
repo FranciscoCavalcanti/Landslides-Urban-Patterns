@@ -1,88 +1,52 @@
-# Load required libraries
-library(dplyr)       # For data manipulation
-library(fixest)      # For fixed effects estimation
-library(did)         # For difference-in-differences estimation
-library(remotes)     # For installing R packages from remote repositories
-library(ggplot2)     # For creating plots
-library(gridExtra)   # For arranging multiple plots
+# Figure D.17: robustness to spatial spillovers, excluding never-treated municipalities that border a treated one (indicator borders_treated; matched sample).
+# Output: analysis/output/_graph_robustness_checks_urban_size_neighbour.jpg
+
+library(dplyr)
+library(MatchIt)
+library(fixest)
+library(did)
+library(remotes)
+library(ggplot2)
+library(gridExtra)
 library(broom)
-library(sf)          # Spatial operations
-library(arrow)       # Read parquet (cached municipality geometries; replaces broken geobr 2.0.0)
-library(data.table)  # For data.table used in the table
-library(grid)        # For unit()
+library(data.table)
+library(grid)
 
-# Set Seed
 set.seed(123)
 
-# Define paths for input and output files
 
-# Set Seed
 set.seed(123)
 
-# Set the paths for input and output files
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
-path_output <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 
-#### Open Databases ####
 
-# Load datasets from the specified file paths
+#### Data ####
+
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
-psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
+#### Matching ####
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region")
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+PSM <- matchit(landslide ~ prec_verao + prec_outono + prec_inverno + prec_primav +
+                 altitude + temp_verao + temp_inverno + temp_primav + temp_outono +
+                 avg_tri + avg_slope + region,
+               data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
 
 
-#### Selecting the Treated/Control Group Using PSM ####
+#### Matched sample ####
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
-#### Robustness 1 - Remove NEVER-treated municipalities that share an IMMEDIATE border with treated municipalities ####
 
-# (Optional but recommended) Work only with municipalities that exist in your sample (dados2)
-codes_sample <- sort(unique(dados2$code))
+border_never_treated <- readRDS(paste0(path_output, "database_two_periods.rds")) %>%
+  dplyr::filter(year == 2000, borders_treated == 1) %>%
+  dplyr::pull(code)
 
-# Read municipality geometries from cached parquet — geobr 2.0.0 download consistently fails.
-# Parquet source: IPEA, cached at analysis/output/mun2020_simplified.parquet.
-# WKB conversion: arrow_binary must be cast to raw + class "WKB" before sf can read it.
-parquet_path <- paste0(GITHUB_PATH, "/analysis/output/mun2020_simplified.parquet")
-pq_raw    <- arrow::read_parquet(parquet_path)
-wkb_list  <- lapply(pq_raw[["geometry"]], function(x) structure(as.raw(x), class = "WKB"))
-mun_geom  <- sf::st_sf(data.frame(code_muni = pq_raw[["code_muni"]]),
-                        geometry = sf::st_as_sfc(wkb_list, crs = 4674)) %>%
-  dplyr::select(code = code_muni) %>%
-  dplyr::filter(code %in% codes_sample) %>%
-  dplyr::left_join(dados %>% dplyr::distinct(code, first_year_landslide), by = "code")
-
-# If you face geometry validity issues uncomment the next line (can be slower)
-# mun_geom <- sf::st_make_valid(mun_geom)
-
-# Adjacency list: neighbors share a boundary
-matriz_adj <- sf::st_touches(mun_geom)
-
-# Fast lookup vector for first_year_landslide by code
-fy <- dados %>%
-  dplyr::distinct(code, first_year_landslide) %>%
-  { setNames(.$first_year_landslide, .$code) }
-
-# Vectorized construction of all (city, neighbor) pairs
-from_idx <- rep(seq_along(matriz_adj), lengths(matriz_adj))
-to_idx   <- unlist(matriz_adj)
-
-pairs <- data.frame(
-  code_city         = mun_geom$code[from_idx],
-  code_neighborhood = mun_geom$code[to_idx]
-)
-
-pairs$first_year_landslide_city         <- fy[as.character(pairs$code_city)]
-pairs$first_year_landslide_neighborhood <- fy[as.character(pairs$code_neighborhood)]
-
-# Identify NEVER-treated neighbors that border any treated municipality
-# Assumption: never-treated is coded as 0 in first_year_landslide
-border_never_treated <- pairs %>%
-  dplyr::filter(first_year_landslide_city != 0,
-                first_year_landslide_neighborhood == 0) %>%
-  dplyr::distinct(code_neighborhood) %>%
-  dplyr::pull(code_neighborhood)
-
-# Remove those NEVER-treated municipalities from the analysis sample
 dados2_robustness <- dados2 %>%
   dplyr::filter(!(code %in% border_never_treated))
 
@@ -99,8 +63,6 @@ ggplot_paper <- function(x){
       base_period = "universal",
       tname = "year",
       data = dados2_robustness
-      # If you want faster runs while testing, uncomment:
-      # , biters = 200
     ),
     type = "dynamic"
   )
@@ -109,12 +71,10 @@ ggplot_paper <- function(x){
     dplyr::select(event.time, estimate, std.error, conf.low, conf.high) %>%
     dplyr::mutate(est = "Matched Sample")
   
-  # Z values for different confidence levels
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
   
-  # Check significance for the overall ATT
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
@@ -124,7 +84,6 @@ ggplot_paper <- function(x){
                                       ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
                                              paste0(round(mw.dyn_p$overall.att, 4)) )))
   
-  # Table (grob)
   dados_tabela <- data.table::data.table(
     ATT = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
@@ -191,10 +150,9 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Generate plots for lurban_size
 output_robustness <- lapply(c("lurban_size"), ggplot_paper)
 
-## Saving DiD plots
+#### Save ####
 
 output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_neighbour.jpg")
 ggsave(output_path, output_robustness[[1]], width = 20, height = 10, units = "in", dpi = 100)

@@ -1,31 +1,42 @@
-# Load required libraries
-library(dplyr)       # For data manipulation
-library(fixest)      # For fixed effects estimation
-library(did)         # For difference-in-differences estimation
-library(remotes)     # For installing R packages from remote repositories
-library(did2s)       # For alternative DiD estimators
-library(staggered)   # For staggered DiD designs
-library(ggplot2)     # For creating plots
-library(gridExtra)   # For arranging multiple plots
+# Figure D.18: alternative treatment, extreme rainfall shocks in mountainous municipalities (intention-to-treat; matched sample).
+# Output: analysis/output/_graph_robustness_extreme_rainfall_mountainous_urban_size.jpg
+
+library(dplyr)
+library(MatchIt)
+library(fixest)
+library(did)
+library(remotes)
+library(did2s)
+library(staggered)
+library(ggplot2)
+library(gridExtra)
 library(data.table)
 
 
-# Set Seed
 set.seed(123)
 
-# Set the paths for input and output files
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
-path_output <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 
-##### Open Data ######
-# Load datasets from the specified file paths
+
+#### Data ####
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
-psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
+#### Matching ####
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region")
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+PSM <- matchit(landslide ~ prec_verao + prec_outono + prec_inverno + prec_primav +
+                 altitude + temp_verao + temp_inverno + temp_primav + temp_outono +
+                 avg_tri + avg_slope + region,
+               data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
 
-#### Selecting the Treated/Control Group Using PSM ####
+#### Matched sample ####
 
-# Merge the main dataset with the PSM dataset using the "code" column
 dados1 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
 
@@ -44,11 +55,6 @@ dados1$landslide_dum <- ifelse(dados1$landslide_event %in% 1,1,0)
 dados1[, (new) := lapply(.SD, cummax), by = code, .SDcols = vari]
 
 
-# =========================================================
-# First Extreme Rainfall Year (for Callaway & Sant’Anna)
-# =========================================================
-
-
 setDT(dados1)
 
 first_int <- dados1[, .(
@@ -59,10 +65,8 @@ first_int <- dados1[, .(
 dados2 <- left_join(dados1, first_int, by = "code")
 
 
-# --------- Function with the same visual style, but for ITT (dados2 / first_int_1d) ---------
 ggplot_paper <- function(x){
   
-  # Dynamic estimation (ITT)
   mw.dyn_p <- aggte(
     att_gt(
       yname         = x,
@@ -79,15 +83,12 @@ ggplot_paper <- function(x){
     na.rm = TRUE
   )
   
-  # Tidy table
   est <- broom::tidy(mw.dyn_p) |>
     select(event.time, estimate, std.error, conf.low, conf.high) |>
     mutate(est = "ITT")
   
-  # Zs
   z_99 <- 2.576; z_95 <- 1.96; z_90 <- 1.645
   
-  # Overall ATT significance (stars)
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se,  z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se,  z_95 * mw.dyn_p$overall.se)
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se,  z_90 * mw.dyn_p$overall.se)
@@ -97,7 +98,6 @@ ggplot_paper <- function(x){
                                       ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
                                              paste(round(mw.dyn_p$overall.att, 4)))))
   
-  # Table as a grob
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
@@ -111,7 +111,6 @@ ggplot_paper <- function(x){
     )
   )
   
-  # Legend/table position (keeps the baseline logic; robust to different ranges)
   value <- c(abs(0 - min(est$conf.low,  na.rm = TRUE)),
              abs(0 - max(est$conf.high, na.rm = TRUE)))
   sequencia   <- seq(min(est$conf.low[is.finite(est$conf.low)],  na.rm = TRUE),
@@ -122,7 +121,6 @@ ggplot_paper <- function(x){
   table_pos_y <- ifelse(value[1] < value[2], quantil_75, quantil_10)
   lengend_pos_y <- ifelse(value[1] < value[2], 0.75, 0.10)
   
-  # Plot (same visual style as other robustness figures)
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(aes(xmax = conf.high, xmin = conf.low),
                     linewidth = 0.5, position = position_dodge(width = 0.5),
@@ -146,7 +144,6 @@ ggplot_paper <- function(x){
       legend.position = c(0.125, lengend_pos_y)
     )
   
-  # Combine with the table (keeps your vertical positioning rule)
   graph + annotation_custom(
     grob = tabela_grob,
     xmin = table_pos_y, xmax = table_pos_y,
@@ -154,14 +151,12 @@ ggplot_paper <- function(x){
   )
 }
 
-# --------- Generate plot for lurban_size ---------
 outcomes <- c("lurban_size")
 output   <- lapply(outcomes, ggplot_paper)
 
 ggsave(paste0(path_output_git, "_graph_robustness_extreme_rainfall_mountainous_urban_size.jpg"),
        output[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-# --------- Correlation (no attach) ---------
 corr <- cor(
   dados2$int_hmount_x_rain1d_ff,
   dados2$landslide_dum_ff,

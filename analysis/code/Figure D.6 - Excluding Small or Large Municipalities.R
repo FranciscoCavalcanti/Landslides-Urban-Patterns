@@ -1,44 +1,45 @@
-# =========================
-# Packages
-# =========================
-library(dplyr)       # Data manipulation
-library(did)         # DiD estimation
-library(ggplot2)     # Plots
-library(gridExtra)   # tableGrob
-library(grid)        # unit()
-library(broom)       # tidy()
-library(data.table)  # data.table()
+# Figure D.6: robustness, excluding municipalities with 2000 population below 5,000 or above 500,000 (matched sample).
+# Output: analysis/output/_graph_robustness_urban_size_{5000p,500000p}.jpg
+
+library(dplyr)
+library(MatchIt)
+library(did)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+library(broom)
+library(data.table)
 library(broom)
 
-# =========================
-# Reproducibility
-# =========================
 set.seed(123)
 
-# =========================
-# Paths
-# =========================
-path_input      <- paste0(DROPBOX_PATH, "/build/input/")
-path_output     <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH,  "/analysis/output/") 
+path_input <- paste0(DROPBOX_PATH, "/build/input/")
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 
-# =========================
-# Open Databases
-# =========================
+
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
-psm   <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
+#### Matching ####
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region")
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+PSM <- matchit(landslide ~ prec_verao + prec_outono + prec_inverno + prec_primav +
+                 altitude + temp_verao + temp_inverno + temp_primav + temp_outono +
+                 avg_tri + avg_slope + region,
+               data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
 
-# =========================
-# Merge main dataset with PSM weights
-# =========================
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
+# Population in 2000 (census), as described in the text: exclusions are municipality-level
+pop2000 <- dados_psm2 %>% dplyr::select(code, pop2000 = population)
+dados2 <- dplyr::left_join(dados2, pop2000, by = "code")
 
-# =========================
-# Core plotting function (same drawing as your original)
-# =========================
+
 ggplot_paper_data <- function(data, x){
-  # 1) Estimation: dynamic ATT on matched sample
   mw.dyn_p <- aggte(
     att_gt(
       yname       = x,
@@ -53,7 +54,6 @@ ggplot_paper_data <- function(data, x){
     type = "dynamic"
   )
   
-  # 2) Tidy results and keep finite rows for plotting
   est <- broom::tidy(mw.dyn_p) |>
     dplyr::select(event.time, estimate, std.error, conf.low, conf.high) |>
     dplyr::mutate(est = "Matched Sample") |>
@@ -63,11 +63,9 @@ ggplot_paper_data <- function(data, x){
     stop(paste0("No finite points to plot for '", x, "'. Check aggte/att_gt output."))
   }
   
-  # 3) Safe x-range (used after coord_flip)
   xr <- range(c(est$estimate, est$conf.low, est$conf.high), na.rm = TRUE)
   if (!is.finite(xr[1]) || !is.finite(xr[2]) || xr[1] == xr[2]) xr <- c(-0.1, 0.1)
   
-  # 4) Overall ATT with significance stars (same logic as your code)
   z_99 <- 2.576; z_95 <- 1.96; z_90 <- 1.645
   att  <- mw.dyn_p$overall.att
   se   <- mw.dyn_p$overall.se
@@ -86,7 +84,6 @@ ggplot_paper_data <- function(data, x){
     }
   }
   
-  # 5) Small in-plot table (tableGrob) with Overall ATT and se
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p,
               paste0("(", ifelse(is.finite(se), round(se, 4), "NA"), ")"))
@@ -102,7 +99,6 @@ ggplot_paper_data <- function(data, x){
     )
   )
   
-  # 6) Table horizontal position (robust to NA/Inf)
   lower_min <- suppressWarnings(min(est$conf.low,  na.rm = TRUE))
   upper_max <- suppressWarnings(max(est$conf.high, na.rm = TRUE))
   if (!is.finite(lower_min)) lower_min <- xr[1]
@@ -117,7 +113,6 @@ ggplot_paper_data <- function(data, x){
   table_pos_x  <- ifelse(value_left < value_right, q91, q18)
   legend_pos_y <- ifelse(value_left < value_right, 0.75, 0.10)
   
-  # 7) Plot (same drawing choices as your original)
   g <- ggplot2::ggplot(est, aes(y = event.time, x = estimate)) +
     ggplot2::geom_pointrange(
       aes(xmin = conf.low, xmax = conf.high),
@@ -149,7 +144,6 @@ ggplot_paper_data <- function(data, x){
       legend.position    = c(0.125, legend_pos_y)
     )
   
-  # 8) Attach the in-plot table using annotation_custom with finite positions
   g <- g + ggplot2::annotation_custom(
     grob = tabela_grob,
     xmin = table_pos_x, xmax = table_pos_x,
@@ -159,10 +153,8 @@ ggplot_paper_data <- function(data, x){
   return(g)
 }
 
-# =========================
-# ROBUSTNESS A: Exclude population < 5,000 (keep NAs)
-# =========================
-dados2_5000p <- subset(dados2, is.na(population) | population >= 5000)
+# ROBUSTNESS A: Exclude population in 2000 < 5,000 (keep NAs)
+dados2_5000p <- subset(dados2, is.na(pop2000) | pop2000 >= 5000)
 
 plots_5000p <- lapply(
   c("lurban_size"),
@@ -175,10 +167,8 @@ ggsave(
   width    = 20, height = 10, units = "in", dpi = 100
 )
 
-# =========================
-# ROBUSTNESS B: Exclude population > 500,000 (keep NAs)
-# =========================
-dados2_500000p <- subset(dados2, is.na(population) | population <= 500000)
+# ROBUSTNESS B: Exclude population in 2000 > 500,000 (keep NAs)
+dados2_500000p <- subset(dados2, is.na(pop2000) | pop2000 <= 500000)
 
 plots_500000p <- lapply(
   c("lurban_size"),
@@ -191,7 +181,7 @@ ggsave(
   width    = 20, height = 10, units = "in", dpi = 100
 )
 
-length(setdiff(unique(dados2$code), unique(dados2$code[is.na(dados2$population) | dados2$population >= 5000])))
+length(setdiff(unique(dados2$code), unique(dados2$code[is.na(dados2$pop2000) | dados2$pop2000 >= 5000])))
 
-length(setdiff(unique(dados2$code), unique(dados2$code[is.na(dados2$population) | dados2$population <= 500000])))
+length(setdiff(unique(dados2$code), unique(dados2$code[is.na(dados2$pop2000) | dados2$pop2000 <= 500000])))
                                       

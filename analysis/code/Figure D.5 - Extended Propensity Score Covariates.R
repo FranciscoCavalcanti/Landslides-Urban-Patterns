@@ -1,64 +1,79 @@
-# Load required libraries
-library(dplyr)       # For data manipulation
-library(fixest)      # For fixed effects estimation
-library(did)         # For difference-in-differences estimation
-library(remotes)     # For installing R packages from remote repositories
-library(did2s)       # For alternative DiD estimators
-library(staggered)   # For staggered DiD designs
-library(ggplot2)     # For creating plots
-library(gridExtra)   # For arranging multiple plots
+# Figure D.5: robustness, propensity score with additional 2000 covariates (share of inadequate housing and sewage, log density, log initial urban area, log income per capita).
+# Output: analysis/output/_graph_robustness_urban_size_extended_psm.jpg
+
+library(dplyr)
+library(MatchIt)
+library(fixest)
+library(did)
+library(remotes)
+library(did2s)
+library(staggered)
+library(ggplot2)
+library(gridExtra)
 library(broom)
 
-# Set Seed
 set.seed(123)
 
-# Set the paths for input and output files
-path_input <- paste0(DROPBOX_PATH, "/build/input/")
-path_output <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
+dir.create(path_output_git, showWarnings = FALSE)
 
-#### Open Databases ####
 
-# Load datasets from the specified file paths
+#### Data ####
+
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
-psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
+#### Matching: original covariates + avg_slope + socioeconomic covariates of the 2000 census and the initial urban area ####
+# Extra covariates (all measured in 2000, before the first landslide of the sample):
+#   share of inadequate housing (inap_houses / total_houses), share of inadequate sewage (Census 2000 microdata; column `share_inadequate_sewage` of database_two_periods.rds),
+#   log density (population / geographic area), log of the initial urban area (urban_size of 2000), log income per capita (avg_income).
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+dados_psm2$share_inadequate_housing <- dados_psm2$inap_houses / dados_psm2$total_houses
+dados_psm2$log_density              <- log(dados_psm2$population / dados_psm2$area_geographic)
+dados_psm2$log_urban_area_initial   <- log(dados_psm2$urban_size)
+dados_psm2$log_income_pc            <- log(dados_psm2$avg_income)
+extra_covariates <- c("share_inadequate_housing", "share_inadequate_sewage", "log_density", "log_urban_area_initial", "log_income_pc")
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region", extra_covariates)
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+cat("municipalities with complete data:", nrow(dados_psm4), "| treated:", sum(dados_psm4$landslide == 1), "\n")
+PSM <- matchit(reformulate(psm_covariates, response = "landslide"), data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
+cat("matched sample:", sum(psm$landslide == 1), "treated and", sum(psm$landslide == 0), "controls\n")
 
-#### Selecting the Treated/Control Group Using PSM ####
 
-# Merge the main dataset with the PSM dataset using the "code" column
+#### Matched sample ####
+
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
-# Function to create plots for robustness checks
+#### Estimation ####
+
 ggplot_paper <- function(x){
   
-  ## Paired results
-  # Estimate ATT for the matched sample using the dynamic DiD approach
+  
   mw.dyn_p <- aggte(
     att_gt(yname = x,
            gname = "first_year_landslide",
            idname = "code",
            bstrap = TRUE,
-           base_period="universal",
+           clustervars = "code",
+           base_period = "universal",
            tname = "year",
-           clustervars = 'code',
-           data = dados2_removing), type = "dynamic")
+           data = dados2), type = "dynamic")
   
-  ## Avg effect
-  # Tidy up the results and select relevant columns
   est_p <- broom::tidy(mw.dyn_p) %>% select(c(event.time, estimate, std.error, conf.low, conf.high)) %>% 
     mutate(est = 'Matched Sample')
   
-  # Combine both results into one data frame
   est <- est_p
   
-
-  # Z values for different confidence levels
+  
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
   
-
-  # Check significance for the paired sample
+  
+  
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
@@ -68,28 +83,26 @@ ggplot_paper <- function(x){
                         ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
                         paste(round(mw.dyn_p$overall.att, 4)))))
   
-  # Create the table as a grob (graphical object)
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
   
   value = c(abs(0 - summary(est$conf.low)[1]), abs(0 - summary(est$conf.high)[6]))
-  sequencia <- seq(min(est$conf.low, na.rm = T), max(est$conf.high, na.rm = T), length.out = 1000)
-  # Calculate the quantiles at 10% and 75%
+  sequencia <- seq(min(est$conf.low[is.finite(est$conf.low)]), max(est$conf.high[is.finite(est$conf.high)]),
+    length.out = 1000
+  )
   quantil_10 <- quantile(sequencia, probs = 0.18)
   quantil_75 <- quantile(sequencia, probs = 0.91)
   
   table_pos_y = ifelse(value[1] < value[2], quantil_75, quantil_10)  
   lengend_pos_y = ifelse(value[1] < value[2], 0.75, 0.1)
   
-  # Generate the table grob
   tabela_grob <- tableGrob(dados_tabela, 
                            rows = NULL, 
                            theme = ttheme_minimal(core = list(fg_params = list(fontsize = 30)), 
                                                   colhead = list(fg_params = list(fontsize = 30, fontface = "bold")), 
                                                   rowhead = list(fg_params = list(fontsize = 30)))) 
   
-  # Create the plot
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
       aes(xmax = conf.high, xmin = conf.low),
@@ -104,10 +117,6 @@ ggplot_paper <- function(x){
     labs(x = 'Coefficient', y = 'Period',
          color = "", linetype = "",
          title = "") +
-    # scale_color_manual(name = "", values = c("black", "grey20"),
-    #                    labels = c('Broader Sample', 'Matched Sample')) +
-    # scale_linetype_manual(name = "", values = c("solid", "dashed"),
-    #                       labels = c('Broader Sample', 'Matched Sample')) + 
     scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() + 
@@ -118,38 +127,19 @@ ggplot_paper <- function(x){
           legend.key.height = unit(1, "cm"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
-          legend.position = c(0.15, lengend_pos_y))
+          legend.position = c(0.125, lengend_pos_y))
   
-  # Combine the plot and the table
   graph <- graph + annotation_custom(grob = tabela_grob,
                                      xmin = table_pos_y,
                                      xmax = table_pos_y,
                                      ymin = -15, ymax = -11)
-  
   return(graph)
 }
 
-#### Robustness - Removing Flooded Municipalities ####
+output <- lapply(c('lurban_size'), ggplot_paper)
 
-# Subset data to remove municipalities affected by floods
-dados_removing <- dados %>% subset(first_year_flash_flood == 0)
-dados2_removing <- dados2 %>% subset(first_year_flash_flood == 0)
+#### Save ####
 
-# Using loop to apply the function to specific variables
-output_robustness1 <- lapply(c('lurban_size'), ggplot_paper)
+lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_urban_size_extended_psm.jpg")
+ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
 
-## Saving DiD plot
-output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_not_removing_flooded.jpg")
-ggsave(output_path, output_robustness1[[1]], width = 20, height = 10, units = "in", dpi = 100)
-
-#### Robustness - Removing Drought Municipalities ####
-
-# Subset data to remove municipalities affected by droughts
-dados_removing <- dados %>% subset(first_year_drought == 0)
-dados2_removing <- dados2 %>% subset(first_year_drought == 0)
-
-output_robustness2 <- lapply(c('lurban_size'), ggplot_paper)
-
-## Saving DiD plot
-output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_removing_drought.jpg")
-ggsave(output_path, output_robustness2[[1]], width = 20, height = 10, units = "in", dpi = 100)
