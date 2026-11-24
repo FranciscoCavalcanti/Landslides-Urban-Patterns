@@ -1,41 +1,49 @@
-# Load required libraries
-library(dplyr)       # For data manipulation
-library(fixest)      # For fixed effects estimation
-library(did)         # For difference-in-differences estimation
-library(remotes)     # For installing R packages from remote repositories
-library(did2s)       # For alternative DiD estimators
-library(staggered)   # For staggered DiD designs
-library(ggplot2)     # For creating plots
-library(gridExtra)   # For arranging multiple plots
+# Figure 4: effect of landslides on the urban fragmentation (sprawl) index (Callaway and Sant'Anna, matched sample).
+# Output: analysis/output/_graph_main_sprawl_index.jpg
+
+library(dplyr)
+library(MatchIt)
+library(fixest)
+library(did)
+library(remotes)
+library(did2s)
+library(staggered)
+library(ggplot2)
+library(gridExtra)
 library(broom)
 
-# Set Seed
 set.seed(123)
 
-# Set the paths for input and output files
-path_input <- paste0(DROPBOX_PATH, "/build/input/")
-path_output <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 
-#### Open Databases ####
 
-# Load datasets from the specified file paths
+#### Data ####
+
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
-psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
+#### Matching ####
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region")
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+PSM <- matchit(landslide ~ prec_verao + prec_outono + prec_inverno + prec_primav +
+                 altitude + temp_verao + temp_inverno + temp_primav + temp_outono +
+                 avg_tri + avg_slope + region,
+               data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
 
-#### Selecting the Treated/Control Group Using PSM ####
 
-# Merge the main dataset with the PSM dataset using the "code" column
+#### Matched sample ####
+
 dados2 <- merge(dados, psm[, c("code", "weights")], by = "code")
 
-#### Main Result - Staggered DiD with PSM ####
+#### Estimation ####
 
-# Define a function to create plots
 ggplot_paper <- function(x){
   
   
-  ## Paired results
-  # Estimate ATT for the matched sample using the dynamic DiD approach
   mw.dyn_p <- aggte(
     att_gt(yname = x,
            gname = "first_year_landslide",
@@ -46,23 +54,18 @@ ggplot_paper <- function(x){
            tname = "year",
            data = dados2), type = "dynamic")
   
-  ## Avg effect
-  # Tidy up the results and select relevant columns
   est_p <- broom::tidy(mw.dyn_p) %>% select(c(event.time, estimate, std.error, conf.low, conf.high)) %>% 
     mutate(est = 'Matched Sample')
   
-  # Combine both results into one data frame
   est <- est_p
   
   
-  # Z values for different confidence levels
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
   
   
   
-  # Check significance for the paired sample
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
@@ -72,7 +75,6 @@ ggplot_paper <- function(x){
                         ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
                         paste(round(mw.dyn_p$overall.att, 4)))))
   
-  # Create the table as a grob (graphical object)
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
@@ -81,21 +83,18 @@ ggplot_paper <- function(x){
   sequencia <- seq(min(est$conf.low[is.finite(est$conf.low)]), max(est$conf.high[is.finite(est$conf.high)]),
     length.out = 1000
   )
-  # Calculate the quantiles at 10% and 75%
   quantil_10 <- quantile(sequencia, probs = 0.18)
   quantil_75 <- quantile(sequencia, probs = 0.91)
   
   table_pos_y = ifelse(value[1] < value[2], quantil_75, quantil_10)  
   lengend_pos_y = ifelse(value[1] < value[2], 0.75, 0.1)
   
-  # Generate the table grob
   tabela_grob <- tableGrob(dados_tabela, 
                            rows = NULL, 
                            theme = ttheme_minimal(core = list(fg_params = list(fontsize = 30)), 
                                                   colhead = list(fg_params = list(fontsize = 30, fontface = "bold")), 
                                                   rowhead = list(fg_params = list(fontsize = 30)))) 
   
-  # Create the plot
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
       aes(xmax = conf.high, xmin = conf.low),
@@ -110,10 +109,6 @@ ggplot_paper <- function(x){
     labs(x = 'Coefficient', y = 'Period',
          color = "", linetype = "",
          title = "") +
-    # scale_color_manual(name = "", values = c("black", "grey20"),
-    #                    labels = c('Broader Sample', 'Matched Sample')) +
-    # scale_linetype_manual(name = "", values = c("solid", "dashed"),
-    #                       labels = c('Broader Sample', 'Matched Sample')) + 
     scale_y_continuous(breaks = seq(-16, 16, by = 2)) +
     coord_flip() +
     theme_minimal() + 
@@ -126,7 +121,6 @@ ggplot_paper <- function(x){
           panel.grid.minor.x = element_blank(),
           legend.position = c(0.125, lengend_pos_y))
   
-  # Combine the plot and the table
   graph <- graph + annotation_custom(grob = tabela_grob,
                                      xmin = table_pos_y,
                                      xmax = table_pos_y,
@@ -134,12 +128,10 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Generate plots for 'sprawl_index'
 output <- lapply(c('sprawl_index'), ggplot_paper)
 
-#### Saving DiD plot ####
+#### Save ####
 
-# Save the plot for Urban Fragmentation
 sprawl_index_output_path <- paste0(path_output_git, "_graph_main_sprawl_index.jpg")
 ggsave(sprawl_index_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
 

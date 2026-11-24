@@ -12,8 +12,6 @@ path_output_github <- paste0(GITHUB_PATH, "/analysis/output/")
 
 #### Open Databases ####
 dados <- readRDS(paste0(path_output,"database_panel.rds"))
-psm   <- readRDS(paste0(path_output,"restricted_PSM_database.rds"))
-psm   <- merge(dados, psm[,c("code","weights")], by="code")
 mun   <- geobr::read_municipality(year = 2020, simplified = F) %>% select(c(code = code_muni))
 uf    <- geobr::read_state()
 

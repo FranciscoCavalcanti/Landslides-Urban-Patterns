@@ -15,10 +15,6 @@ path_output_github <- paste0(GITHUB_PATH, "/analysis/output/")   # GitHub output
 
 # Load datasets from the specified file paths
 dados <- readRDS(paste0(path_output, "database_panel.rds"))              # Main dataset
-psm   <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))     # PSM dataset
-
-# Merge the main dataset with the PSM dataset using the "code" column
-psm <- merge(dados, psm[, c("code", "weights")], by = "code")            # Add weights
 
 # Load municipality and state geospatial data for the year 2020
 mun <- geobr::read_municipality(year = 2020, simplified = FALSE, showProgress = FALSE) %>%

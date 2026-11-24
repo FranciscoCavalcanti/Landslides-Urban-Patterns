@@ -1,36 +1,44 @@
-# Load required libraries
-library(dplyr)       # For data manipulation
-library(fixest)      # For fixed effects estimation
-library(did)         # For difference-in-differences estimation
-library(remotes)     # For installing R packages from remote repositories
-library(did2s)       # For alternative DiD estimators
-library(staggered)   # For staggered DiD designs
-library(ggplot2)     # For creating plots
-library(gridExtra)   # For arranging multiple plots
+# Figure D.16: robustness, state-by-year fixed effects (matched sample).
+# Output: analysis/output/_graph_robustness_urban_size_stateyear.jpg
+
+library(dplyr)
+library(MatchIt)
+library(fixest)
+library(did)
+library(remotes)
+library(did2s)
+library(staggered)
+library(ggplot2)
+library(gridExtra)
 library(broom)
 
-# Set Seed
 set.seed(123)
 
-# Set the paths for input and output files
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
-path_output <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 
-#### Open Databases ####
 
-# Load datasets from the specified file paths
+#### Data ####
+
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
-psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
+#### Matching ####
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region")
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+PSM <- matchit(landslide ~ prec_verao + prec_outono + prec_inverno + prec_primav +
+                 altitude + temp_verao + temp_inverno + temp_primav + temp_outono +
+                 avg_tri + avg_slope + region,
+               data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
 
 dados2 <- merge(dados, psm[, c("code", "weights", "state")], by = "code")
 
-#### Selecting the Treated/Control Group Using PSM ####
+#### Matched sample ####
 
-# Build a safe copy with explicit FE variables
-# - state: character -> factor
-# - year:  -> integer
-# - state_year: factor with all state×year dummies
 
 dados2_fe <- within(dados2, {
   state      <- as.factor(state)
@@ -38,10 +46,8 @@ dados2_fe <- within(dados2, {
   state_year <- interaction(state, year, drop = TRUE)
 })
 dados2_fe <- droplevels(dados2_fe)
-# (Optional) enforce default treatment contrasts
 options(contrasts = c("contr.treatment", "contr.poly"))
 
-# Define a function to create plots
 ggplot_paper <- function(x){
   
   ## State-by-year fixed effects: net them out of the outcome, then run the
@@ -55,7 +61,6 @@ ggplot_paper <- function(x){
     fixest::feols(fe_formula, data = dat, fixef.rm = "none")
   ))
 
-  ## Event-study ATT on the state-by-year residualized outcome
   mw.dyn_p <- aggte(
     att_gt(
       yname        = paste0(x, "_sy"),
@@ -72,13 +77,11 @@ ggplot_paper <- function(x){
     na.rm = TRUE
   )
   
-  ## Avg effect
   est_p <- broom::tidy(mw.dyn_p) %>% 
     dplyr::select(event.time, estimate, std.error, conf.low, conf.high) %>% 
     dplyr::mutate(est = 'Matched Sample')
   est <- est_p
   
-  ## Significance stars for the average ATT
   z_99 <- 2.576; z_95 <- 1.96; z_90 <- 1.645
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se,  z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se,  z_95 * mw.dyn_p$overall.se)
@@ -88,7 +91,6 @@ ggplot_paper <- function(x){
                                       ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att, 4), "*"),
                                              paste(round(mw.dyn_p$overall.att, 4)))))
   
-  # ATT table
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p, paste0("(", round(mw.dyn_p$overall.se, 4), ")"))
   )
@@ -116,7 +118,6 @@ ggplot_paper <- function(x){
     )
   )
   
-  # Plot (same style)
   graph <- ggplot(data = est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
       aes(xmax = conf.high, xmin = conf.low),
@@ -147,9 +148,8 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Run for lurban_size only
 output <- lapply(c('lurban_size'), ggplot_paper)
 
-#### Saving DiD plot ####
+#### Save ####
 lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_urban_size_stateyear.jpg")
 ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)

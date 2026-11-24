@@ -1,40 +1,32 @@
-# Load required libraries
-library(dplyr)          # For data manipulation
-library(fixest)         # For fixed effects models
-library(did)            # For Difference-in-Differences analysis
-library(remotes)        # For installing R packages from remote repositories
-library(did2s)          # For two-step Difference-in-Differences estimation
-library(staggered)      # For staggered adoption Difference-in-Differences analysis
-library(ggplot2)        # For data visualization
-library(gridExtra)      # For arranging multiple grid-based plots
+# Figure D.3: robustness, Southeast-only and Southeast-excluded samples (no matching).
+# Output: analysis/output/_graph_robustness_checks_urban_size_{southeast,no_southeast}.jpg
+
+library(dplyr)
+library(fixest)
+library(did)
+library(remotes)
+library(did2s)
+library(staggered)
+library(ggplot2)
+library(gridExtra)
 library(broom)
 
-# Set Seed
 set.seed(123)
 
-# Define file paths using the specified directories
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
-path_output <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 
-#### Open Databases ####
 
-# Load datasets from the specified file paths
+#### Data ####
+
 dados <- readRDS(paste0(path_output,"database_panel.rds"))
-psm <- readRDS(paste0(path_output,"restricted_PSM_database.rds"))
 
-#### Selecting the Treated/Control Group Using PSM ####
+#### Matched sample ####
 
-# Merge the main dataset with the PSM dataset using the "code" column
-dados2 <- merge(dados, psm[,c("code","weights")], by="code")
 
-#### Robustness 1 - Sample considering only Southeast ####
-
-# Define a function to create ggplot visualizations for robustness checks
 ggplot_paper <- function(x){
   
-  ## Paired results
-  # Calculate the dynamic ATT for the given variable (x) with matching
   mw.dyn_p <- aggte(
     att_gt(yname = x,
            gname = "first_year_landslide",
@@ -45,19 +37,14 @@ ggplot_paper <- function(x){
            clustervars = 'code',
            data = dados_robustness), type = "dynamic")
   
-  ## Avg effect
-  # Transform the result into a tidy data frame
   est_p <- broom::tidy(mw.dyn_p) %>% select(c(event.time, estimate, std.error, conf.low, conf.high))
   
-  # Combined results
   est <- est_p
   
-  # z-values for different confidence levels
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
   
-  # Significance checks
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
@@ -67,7 +54,6 @@ ggplot_paper <- function(x){
                                       ifelse(all(IC_90 < 0) | all(IC_90 > 0), paste0(round(mw.dyn_p$overall.att,4), "*"),
                                              paste(round(mw.dyn_p$overall.att,4)))))
   
-  # Small table for displaying results
   dados_tabela <- data.table::data.table(
     `ATT` = c(ATT_significance_p, paste0("(",round(mw.dyn_p$overall.se,4),")"))
   )
@@ -86,7 +72,6 @@ ggplot_paper <- function(x){
                                                   colhead = list(fg_params = list(fontsize = 30, fontface = "bold")), 
                                                   rowhead = list(fg_params = list(fontsize = 30)))) 
   
-  # Plot
   graph <- ggplot(data=est, aes(y = event.time, x = estimate)) +
     geom_pointrange(
       aes(xmax = conf.high, xmin = conf.low),
@@ -114,15 +99,12 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# --- Robustness using ONLY Southeast municipalities ---
 dados_robustness  <- dados  %>% dplyr::filter(region %in% c("Southeast"))
 output_robustness_SE <- lapply(c('lurban_size'), ggplot_paper)
 
 output_path <- paste0(path_output_git, "_graph_robustness_checks_urban_size_southeast.jpg")
 ggsave(output_path, output_robustness_SE[[1]], width = 20, height = 10, units = "in", dpi = 300)
 
-
-#### Robustness 2 - Sample EXCLUDING Southeast ####
 
 dados_robustness  <- dados %>% dplyr::filter(!region %in% c("Southeast"))
 output_robustness_noSE <- lapply(c('lurban_size'), ggplot_paper)

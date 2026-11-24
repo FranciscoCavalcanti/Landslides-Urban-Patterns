@@ -1,27 +1,39 @@
-# Load required libraries
-library(dplyr)       # For data manipulation
-library(fixest)      # For fixed effects estimation
-library(did)         # For difference-in-differences estimation
-library(remotes)     # For installing R packages from remote repositories
-library(did2s)       # For alternative DiD estimators
-library(staggered)   # For staggered DiD designs
-library(ggplot2)     # For creating plots
-library(gridExtra)   # For arranging multiple plots
+# Figure D.15: robustness, controlling for baseline covariates interacted with a linear trend (matched sample).
+# Output: analysis/output/_graph_robustness_inclusion_control_urban_size.jpg
+
+library(dplyr)
+library(MatchIt)
+library(fixest)
+library(did)
+library(remotes)
+library(did2s)
+library(staggered)
+library(ggplot2)
+library(gridExtra)
 library(broom)
 
-# Set Seed
 set.seed(123)
 
-# Set the paths for input and output files
 path_input <- paste0(DROPBOX_PATH, "/build/input/")
-path_output <- paste0(DROPBOX_PATH, "/build/output/") 
-path_output_git <- paste0(GITHUB_PATH, "/analysis/output/") 
+path_output <- paste0(DROPBOX_PATH, "/build/output/")
+path_output_git <- paste0(GITHUB_PATH, "/analysis/output/")
 
-#### Open Databases ####
 
-# Load datasets from the specified file paths
+#### Data ####
+
 dados <- readRDS(paste0(path_output, "database_panel.rds"))
-psm <- readRDS(paste0(path_output, "restricted_PSM_database.rds"))
+#### Matching ####
+dados_psm2 <- readRDS(paste0(path_output, "database_two_periods.rds")) %>% filter(year == 2000)
+dados_psm2$region <- factor(dados_psm2$region, levels = c("Midwest","North","Northeast","South","Southeast"))
+psm_covariates <- c("prec_verao", "prec_outono", "prec_inverno", "prec_primav", "altitude",
+                    "temp_verao", "temp_inverno", "temp_primav", "temp_outono", "avg_tri",
+                    "avg_slope", "region")
+dados_psm4 <- dados_psm2[complete.cases(dados_psm2[, psm_covariates]), ]
+PSM <- matchit(landslide ~ prec_verao + prec_outono + prec_inverno + prec_primav +
+                 altitude + temp_verao + temp_inverno + temp_primav + temp_outono +
+                 avg_tri + avg_slope + region,
+               data = dados_psm4, method = "nearest")
+psm <- match.data(PSM)
 
 psm <- psm %>%
   mutate(across(c(urban_population, population, inap_houses, total_houses,
@@ -35,9 +47,8 @@ psm$log_urban_size <- log(psm$urban_size)
 psm$log_avg_income <- log(psm$avg_income)
 psm$log_population <- log(psm$population)
 
-#### Selecting the Treated/Control Group Using PSM ####
+#### Matched sample ####
 
-# Merge the main dataset with the PSM dataset using the "code" column
 dados2 <- merge(dados, psm[, c("code", "weights","p_urbana","p_informal","avg_tri",
                                "log_urban_size",
                                "log_avg_income","log_population")], by = "code")
@@ -50,13 +61,10 @@ dados2 <- dados2 %>%
          p_urbana_trend = p_urbana * trend,
          p_informal_trend = p_informal * trend)
 
-#### Main Result - Staggered DiD with PSM ####
+#### Estimation ####
 
-# Define a function to create plots
 ggplot_paper <- function(x){
 
-  ## Paired results
-  # Estimate ATT for the matched sample using the dynamic DiD approach
   mw.dyn_p <- aggte(
     att_gt(yname = x,
            gname = "first_year_landslide",
@@ -72,19 +80,16 @@ ggplot_paper <- function(x){
     na.rm = TRUE     
   )
   
-  ## Avg effect
   est_p <- broom::tidy(mw.dyn_p) %>%
     select(c(event.time, estimate, std.error, conf.low, conf.high)) %>%
     mutate(est = 'Matched Sample')
   
   est <- est_p
   
-  # Z values for different confidence levels
   z_99 <- 2.576
   z_95 <- 1.96
   z_90 <- 1.645
   
-  # Confidence intervals for ATT
   IC_99 <- mw.dyn_p$overall.att + c(-z_99 * mw.dyn_p$overall.se, z_99 * mw.dyn_p$overall.se)
   IC_95 <- mw.dyn_p$overall.att + c(-z_95 * mw.dyn_p$overall.se, z_95 * mw.dyn_p$overall.se)
   IC_90 <- mw.dyn_p$overall.att + c(-z_90 * mw.dyn_p$overall.se, z_90 * mw.dyn_p$overall.se)
@@ -145,10 +150,9 @@ ggplot_paper <- function(x){
   return(graph)
 }
 
-# Generate plot for 'lurban_size'
 output <- lapply(c('lurban_size'), ggplot_paper)
 
-#### Saving DiD plot ####
+#### Save ####
 
 lurban_size_output_path <- paste0(path_output_git, "_graph_robustness_inclusion_control_urban_size.jpg")
 ggsave(lurban_size_output_path, output[[1]], width = 20, height = 10, units = "in", dpi = 100)
